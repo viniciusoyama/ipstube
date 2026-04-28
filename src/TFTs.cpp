@@ -398,8 +398,12 @@ void TFTs::drawDivergenceDigit(uint8_t panel, char ch, bool useFont) {
   if (!enabled) return;
 
   // Settled-state digit -> use the same BMP path that clock-face digits go
-  // through, so the user's active face is honoured.
+  // through, so the user's active face is honoured. Invalidate the BMP cache
+  // first: previous font/dot/blank renders overwrote the sprite buffer
+  // without updating the cache key, so showDigit() would otherwise skip the
+  // disk read and push whatever font garbage is still in the sprite.
   if (ch >= '0' && ch <= '9' && !useFont) {
+    loadedFilename[0] = 0;
     char name[2] = { ch, 0 };
     setDigit(panel, name, force);
     return;
@@ -423,10 +427,10 @@ void TFTs::drawDivergenceDigit(uint8_t panel, char ch, bool useFont) {
     sprite.setTextSize(1);
     sprite.setTextDatum(TL_DATUM);
   } else if (ch == '.') {
-    // Big dot at bottom-right of its dedicated panel.
+    // Dot at bottom-right of its dedicated panel.
     const uint16_t dotColor = parseDivergenceColor();
-    int16_t r = sprite.width() / 6;            // big enough to read at distance
-    int16_t margin = r + 6;
+    int16_t r = sprite.width() / 12;
+    int16_t margin = r + 8;
     int16_t x = sprite.width() - margin;
     int16_t y = sprite.height() - margin;
     sprite.fillCircle(x, y, r, dotColor);
