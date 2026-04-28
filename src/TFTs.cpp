@@ -324,8 +324,8 @@ void TFTs::drawStatus() {
 }
 
 TextAnimation& TFTs::getTextAnimator() {
-  static TextAnimation animator;
-  return animator;
+  static TextAnimation* p = new TextAnimation();
+  return *p;
 }
 
 void TFTs::invalidateTextAnimation() {
@@ -356,8 +356,8 @@ void TFTs::animateText() {
 }
 
 DivergenceAnimation& TFTs::getDivergenceAnimator() {
-  static DivergenceAnimation animator;
-  return animator;
+  static DivergenceAnimation* p = new DivergenceAnimation();
+  return *p;
 }
 
 void TFTs::restartDivergenceAnimation() {
