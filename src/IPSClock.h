@@ -53,7 +53,7 @@ public:
     static ByteConfigItem& getBrightnessConfig() { static ByteConfigItem brightness_config("brightness_config", 255); return brightness_config; }
     static StringConfigItem& getCustomData() { static StringConfigItem custom_data("custom_data", 10, ""); return custom_data; }	// Custom data for MQTT
 
-    static StringConfigItem& getTextContent()    { static StringConfigItem text_content("text_content", 32, ""); return text_content; }
+    static StringConfigItem& getTextContent()    { static StringConfigItem text_content("text_content", 24, ""); return text_content; }
     static BooleanConfigItem& getTextFixed()     { static BooleanConfigItem text_fixed("text_fixed", true); return text_fixed; }
     static IntConfigItem& getTextInterval()      { static IntConfigItem text_interval("text_interval", 500); return text_interval; }
     static ByteConfigItem& getTextPadding()      { static ByteConfigItem text_padding("text_padding", 3); return text_padding; }

@@ -28,10 +28,6 @@ private:
     uint32_t lastDrawMs = 0;
     uint32_t tick = 0;
     bool dirty = true;
-    String lastText;
-    bool lastFixed = true;
-    String lastFg;
-    String lastBg;
 
     int32_t cyclesRemaining = -1;     // -1 = unlimited
     int32_t prevLeftmostIdx = -1;     // tape index shown on leftmost last frame; -1 = uninitialized

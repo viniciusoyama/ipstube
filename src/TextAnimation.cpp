@@ -27,7 +27,11 @@ char TextAnimation::tapeAt(const String& tape, int32_t idx) const {
     return tape.charAt(m);
 }
 
-void TextAnimation::invalidate() { dirty = true; }
+void TextAnimation::invalidate() {
+    dirty = true;
+    tick = 0;
+    prevLeftmostIdx = -1;
+}
 
 void TextAnimation::resetCycleCount() {
     if (IPSClock::getTextCycleLimitEnabled() && IPSClock::getTextCycleLimit().value > 0) {
@@ -40,19 +44,7 @@ void TextAnimation::resetCycleCount() {
 }
 
 bool TextAnimation::loop() {
-    String text = IPSClock::getTextContent();
     bool fixed = IPSClock::getTextFixed();
-    String fg = IPSClock::getTextFgColor();
-    String bg = IPSClock::getTextBgColor();
-
-    if (text != lastText || fixed != lastFixed || fg != lastFg || bg != lastBg) {
-        lastText = text;
-        lastFixed = fixed;
-        lastFg = fg;
-        lastBg = bg;
-        dirty = true;
-        tick = 0;
-    }
 
     if (fixed) {
         if (dirty) {
