@@ -247,7 +247,9 @@ var state = {
 		'text_interval' : 500,
 		'text_padding' : 3,
 		'text_fg_color' : '#ffffff',
-		'text_bg_color' : '#000000'
+		'text_bg_color' : '#000000',
+		'text_cycle_limit_enabled' : false,
+		'text_cycle_limit' : 1
 	}
 }
 
