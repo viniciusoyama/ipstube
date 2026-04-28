@@ -80,7 +80,11 @@ public:
   void animateDivergence();
   void restartDivergenceAnimation();
   bool isDivergenceAnimationFinished();
-  void drawDivergenceDigit(uint8_t panel, char digitChar, bool drawDot);
+  // Renders a single panel for the divergence meter. `ch`:
+  //   '0'..'9' -> digit BMP from the active clock face
+  //   '.'      -> dedicated dot panel (black background + "." in dot color)
+  //   ' '      -> blank panel (all black)
+  void drawDivergenceDigit(uint8_t panel, char ch);
 
   void setImageJustification(image_justification_t value) { imageJustification = value; }
   void setBox(uint16_t w, uint16_t h) { boxWidth = w; boxHeight = h; }

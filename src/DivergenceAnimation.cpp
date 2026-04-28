@@ -74,26 +74,29 @@ void DivergenceAnimation::animate(TFTs& tfts) {
     uint8_t cycles = IPSClock::getDivergenceCycles().value;
     if (cycles > 24) cycles = 24;
 
+    // Layout (reading order, left to right):
+    //   panel charIdx 0 -> digit 0  (e.g. '1' from "12345")
+    //   panel charIdx 1 -> dedicated dot panel
+    //   panel charIdx 2 -> digit 1  ('2')
+    //   panel charIdx 3 -> digit 2  ('3')
+    //   panel charIdx 4 -> digit 3  ('4')
+    //   panel charIdx 5 -> digit 4  ('5')
     for (uint8_t i = 0; i < NUM_DIGITS; i++) {
-        char digitChar = ' ';
-        bool drawDot = false;
-
-        if (i == 5) {
-            digitChar = ' ';
+        char ch;
+        if (i == 1) {
+            ch = '.';
         } else {
-            uint8_t toTarget = (uint8_t)(((int)targetDigit[i] - (int)startOffset[i] + 10) % 10);
+            uint8_t digitIdx = (i == 0) ? 0 : (i - 1);
+            uint8_t toTarget = (uint8_t)(((int)targetDigit[digitIdx] - (int)startOffset[digitIdx] + 10) % 10);
             uint8_t doneTick = (uint8_t)(cycles * 10 + toTarget);
             uint8_t shown = (globalTick >= doneTick)
-                ? targetDigit[i]
-                : (uint8_t)((startOffset[i] + globalTick) % 10);
-            digitChar = (char)('0' + shown);
-            // Decimal dot lives on the second panel (reading order index 1),
-            // bottom-left, so it appears between digit 0 and digit 1.
-            if (i == 1) drawDot = true;
+                ? targetDigit[digitIdx]
+                : (uint8_t)((startOffset[digitIdx] + globalTick) % 10);
+            ch = (char)('0' + shown);
         }
 
         uint8_t physicalPanel = kLeftToRightPanel[i];
-        tfts.drawDivergenceDigit(physicalPanel, digitChar, drawDot);
+        tfts.drawDivergenceDigit(physicalPanel, ch);
     }
 
     if (globalTick < 255) globalTick++;

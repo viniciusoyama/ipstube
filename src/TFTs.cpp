@@ -383,38 +383,33 @@ void TFTs::animateDivergence() {
   release();
 }
 
-void TFTs::drawDivergenceDigit(uint8_t panel, char digitChar, bool drawDot) {
+void TFTs::drawDivergenceDigit(uint8_t panel, char ch) {
   if (!enabled) return;
 
-  if (digitChar == ' ') {
-    chip_select.setDigit(panel);
-    TFT_eSprite& sprite = getSprite();
-    sprite.fillSprite(TFT_BLACK);
-    sprite.pushSprite(0, 0);
+  // Digit -> use the same BMP path that clock-face digits go through, so the
+  // active face is honoured. setDigit(force) caches the name and runs
+  // showDigit() which decodes the BMP into the sprite and pushes it.
+  if (ch >= '0' && ch <= '9') {
+    char name[2] = { ch, 0 };
+    setDigit(panel, name, force);
     return;
   }
 
-  // Cache the digit name without auto-pushing, then load + draw via
-  // drawImage() so we can overlay the dot before pushing.
-  char name[2] = { digitChar, 0 };
-  setDigit(panel, name, no);
+  // Blank or dot panel: render directly into the sprite and push.
+  chip_select.setDigit(panel);
+  StaticSprite& sprite = getSprite();
+  sprite.fillSprite(TFT_BLACK);
 
-  // Force-reload the BMP from disk: drawImage() short-circuits if the
-  // requested file is already in the buffer, but a previous frame may have
-  // left a dot painted into that buffer.
-  FileInBuffer = 255;
-  TFT_eSprite& sprite = drawImage(panel);
-
-  if (drawDot) {
-    // Hardcoded dot color: RGB(255, 115, 0) -> RGB565.
+  if (ch == '.') {
+    // RGB(255, 115, 0) -> RGB565
     const uint16_t dotColor = ((255 & 0xF8) << 8) | ((115 & 0xFC) << 3) | (0 >> 3);
-    int16_t r = max((int16_t)6, (int16_t)(sprite.height() / 30));
-    // Bottom-LEFT corner: appears just before the digit on this panel, so
-    // visually the dot sits between the previous panel's digit and this one
-    // (e.g. "1.2345" with the dot on the panel showing "2").
-    int16_t x = r + 4;
-    int16_t y = sprite.height() - r - 4;
-    sprite.fillCircle(x, y, r, dotColor);
+    sprite.setTextDatum(BC_DATUM);
+    sprite.setTextColor(dotColor, TFT_BLACK);
+    sprite.setTextFont(6);
+    sprite.drawString(".", sprite.width() / 2, sprite.height() - 4);
+    // Restore sprite state so other faces don't inherit our font/datum.
+    sprite.setTextSize(1);
+    sprite.setTextDatum(TL_DATUM);
   }
 
   sprite.pushSprite(0, 0);
