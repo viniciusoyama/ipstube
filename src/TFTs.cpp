@@ -450,12 +450,14 @@ bool TFTs::buildDivergenceDigitCache(const uint8_t digits[], uint8_t count) {
       return false;
     }
 
-    // Downsample 135x240 -> 45x80 nearest-neighbour (3x reduction in each
+    // Downsample 135x240 -> 34x60 nearest-neighbour (4x reduction in each
     // dimension). Source is the working sprite's RGB565 buffer.
     const uint16_t* src = (const uint16_t*) StaticSprite::output_buffer;
     for (int y = 0; y < DIV_CACHE_H; y++) {
       for (int x = 0; x < DIV_CACHE_W; x++) {
-        buf[y * DIV_CACHE_W + x] = src[(y * 3) * TFT_WIDTH + (x * 3)];
+        int sx = x * 4;
+        if (sx >= TFT_WIDTH) sx = TFT_WIDTH - 1;
+        buf[y * DIV_CACHE_W + x] = src[(y * 4) * TFT_WIDTH + sx];
       }
     }
 
@@ -480,18 +482,18 @@ bool TFTs::pushCachedDivergenceDigit(uint8_t panel, uint8_t digit) {
 
   chip_select.setDigit(panel);
 
-  // Upsample 45x80 -> 135x240 nearest-neighbour directly into the working
-  // sprite buffer (3x in each dimension). Per pixel: one indexed read +
+  // Upsample 34x60 -> 135x240 nearest-neighbour directly into the working
+  // sprite buffer (4x in each dimension). Per pixel: one indexed read +
   // one indexed write.
   uint16_t* dst = (uint16_t*) StaticSprite::output_buffer;
   const uint16_t* src = entry->buf;
   for (int Y = 0; Y < TFT_HEIGHT; Y++) {
-    int cy = Y / 3;
+    int cy = Y / 4;
     if (cy >= DIV_CACHE_H) cy = DIV_CACHE_H - 1;
     const uint16_t* row = &src[cy * DIV_CACHE_W];
     uint16_t* dstRow = &dst[Y * TFT_WIDTH];
     for (int X = 0; X < TFT_WIDTH; X++) {
-      int cx = X / 3;
+      int cx = X / 4;
       if (cx >= DIV_CACHE_W) cx = DIV_CACHE_W - 1;
       dstRow[X] = row[cx];
     }

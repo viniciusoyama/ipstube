@@ -100,31 +100,41 @@ persist — it sends a non-config WebSocket key `activate_meter:true`.
 
 ## Architectural decisions
 
-### Why third-resolution cache for all 10 digits
+### Why quarter-resolution cache for all 10 digits
 Per-frame disk I/O for digit BMPs is the rendering bottleneck (~25 ms
-per panel × 5 panels ≈ 125 ms/frame, very visibly sequential). The
-user wants matrix-screensaver-style speed for the rolling.
-
-We cache the 10 digit BMPs once at activation, downsampled to **third
-resolution** (~7 KB each, ~72 KB total). Per push we
+per panel × 5 panels ≈ 125 ms/frame, very visibly sequential). We
+cache the 10 digit BMPs once at activation, downsampled to **quarter
+resolution** (~4 KB each, ~40 KB total). Per push we
 nearest-neighbour upsample directly into the working sprite (~1 ms)
 before pushing (~12 ms). Per-panel cost is ~13 ms × 5 ≈ 65 ms/frame
 during rolling.
 
-### Why a third — not half — resolution
-Half resolution is 16 KB per digit × 10 = 160 KB. ESP32 free heap on
-this board is roughly 100–150 KB after WiFi/MQTT/sprite/etc. We
-observed silent allocation failures in the heap pressure regime when
-trying to cache 10 half-res digits. Dropping to third resolution
-(~72 KB) gives plenty of margin and consistently builds.
+### Why a quarter — not half or third — resolution
+Free heap on this board (`esp32dev`, no PSRAM) at runtime is much
+tighter than the chip's nominal 320 KB SRAM suggests. Empirically
+the `malloc` budget for the divergence cache is around 40–50 KB
+after WiFi, MQTT, the web server and the 64 KB sprite buffer have
+taken their share. We observed:
 
-The visual cost: a 45×80 RGB565 sprite scaled 3× nearest-neighbour
-is noticeably blocky during rolling. It's acceptable here because
+- Half-res × 5 unique digits (~80 KB) failed unless ≤ 3 unique;
+- Third-res × 10 (~72 KB) failed silently during the build;
+- Quarter-res × 10 (~40 KB) reliably succeeds.
+
+The cache build also frees the 64 KB `divergenceBg` (lazy
+clock-face background) before allocating, freeing more room when
+`divergenceBg` happened to be allocated.
+
+The visual cost: a 34×60 RGB565 sprite scaled 4× nearest-neighbour
+is very blocky during rolling. Acceptable because:
 - rolling is brief (a few seconds max);
 - the panel switches to the **full-resolution BMP** the moment it
   settles, so the final number is always sharp;
 - the dot panel uses **full-resolution `dot.bmp`** since it's static
   and requires only one disk load.
+
+If your board has more free heap (e.g. PSRAM), bumping
+`DIV_CACHE_W/H` back to half resolution (`67/120`, ~16 KB each,
+~160 KB total) gives a much sharper rolling visual.
 
 ### Why incremental order (not random per panel)
 Each panel rolls `0,1,2,3,…,9,0,1,…` starting from a random
@@ -192,8 +202,8 @@ time at activation (~100–200 ms). That's a one-time cost per
 activation; rolling ticks afterwards are heap-only.
 
 ### Memory accounting
-- Each cached digit: `45 × 80 × sizeof(uint16_t)` = 7 200 bytes.
-- All 10: ~72 KB heap.
+- Each cached digit: `34 × 60 × sizeof(uint16_t)` = 4 080 bytes.
+- All 10: ~40 KB heap.
 - Working sprite (`StaticSprite::output_buffer`): 64 KB BSS (always
   reserved, not specific to this feature).
 - BSS additions for the four ConfigItems (heap-allocated pattern):

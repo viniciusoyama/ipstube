@@ -171,14 +171,13 @@ private:
   uint8_t* divergenceBg = nullptr;
   void ensureDivergenceBackground();
 
-  // Third-resolution cached digit BMPs for the divergence meter rolling
-  // phase. Up to 10 entries (one per digit 0..9), each ~7 KB
-  // (45 x 80 RGB565). Built fresh per activation in
-  // buildDivergenceDigitCache(), kept until rebuilt or freed. Total
-  // ~72 KB heap, comfortably below the ~100 KB free heap budget on
-  // esp32dev (no PSRAM).
-  static const int DIV_CACHE_W = 45;     // TFT_WIDTH / 3
-  static const int DIV_CACHE_H = 80;     // TFT_HEIGHT / 3
+  // Quarter-resolution cached digit BMPs for the divergence meter rolling
+  // phase. 10 entries (one per digit 0..9), each ~4 KB (34 x 60 RGB565).
+  // Total ~40 KB heap — sized to fit even on heaps that were only
+  // accommodating 3 half-res digits before. Built fresh per activation in
+  // buildDivergenceDigitCache(), kept until rebuilt or freed.
+  static const int DIV_CACHE_W = 34;     // ceil(TFT_WIDTH / 4)
+  static const int DIV_CACHE_H = 60;     // TFT_HEIGHT / 4
   struct DivDigitCache {
     uint8_t digit;       // 0..9
     uint16_t* buf;       // DIV_CACHE_W * DIV_CACHE_H pixels, RGB565
