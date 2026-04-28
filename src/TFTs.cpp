@@ -332,6 +332,14 @@ void TFTs::invalidateTextAnimation() {
   getTextAnimator().invalidate();
 }
 
+void TFTs::resetTextCycleCount() {
+  getTextAnimator().resetCycleCount();
+}
+
+bool TFTs::isTextAnimationFinished() {
+  return getTextAnimator().isFinished();
+}
+
 void TFTs::animateText() {
   TextAnimation& animator = getTextAnimator();
   if (!animator.loop()) {
