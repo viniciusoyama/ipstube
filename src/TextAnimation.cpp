@@ -69,28 +69,39 @@ void TextAnimation::animate(TFTs& tfts) {
     int32_t textLen = (int32_t)text.length();
     int32_t tapeLen = textLen + (int32_t)padding;
 
-    // Marquee model: the visible window slides across an infinite tape made of
-    // (text + padding spaces) repeating. New text instances may begin entering
-    // from the right while the previous instance is still on screen — that's
-    // the user's intent.
+    // Marquee model: the visible window slides over an infinite virtual strip
+    //   (NUM_DIGITS leading blanks) + tape + tape + tape + ...
+    // where tape = text + padding spaces.
     //
-    // One-shot lead-in: at the first frame after activation (tick == 0) we
-    // force all panels blank, so activation starts visually clean. From
-    // tick == 1 onwards we use marqueeTick = tick - 1 with the standard
-    // right-to-left wrap formula.
-    bool leadIn = (tick == 0);
-    int32_t marqueeTick = (int32_t)tick - 1;
+    // Panel charIdx (0=leftmost, 5=rightmost) at tick T shows strip[T + charIdx].
+    // The leading blanks make activation start clean: at T=0 all panels are
+    // blank, at T=1 the rightmost panel just received the first text char,
+    // etc. After T grows past the leading prefix the marquee wraps the tape
+    // continuously and subsequent text instances may overlap the previous on
+    // screen (that's the user's intent — controlled via padding).
+    auto stripAt = [&](int32_t i) -> char {
+        if (i < (int32_t)NUM_DIGITS) return ' ';        // leading lead-in
+        if (textLen == 0 || tapeLen == 0) return ' ';
+        int32_t tapeIdx = (((i - (int32_t)NUM_DIGITS) % tapeLen) + tapeLen) % tapeLen;
+        if (tapeIdx < textLen) return text.charAt(tapeIdx);
+        return ' ';                                     // padding region
+    };
+
+    // Returns the tape position for the panel at charIdx, or -1 if the panel
+    // is currently in the lead-in or in the padding region.
+    auto stripPosAt = [&](int32_t charIdx) -> int32_t {
+        int32_t i = (int32_t)tick + charIdx;
+        if (i < (int32_t)NUM_DIGITS) return -1;
+        if (tapeLen <= 0) return -1;
+        int32_t tapeIdx = (((i - (int32_t)NUM_DIGITS) % tapeLen) + tapeLen) % tapeLen;
+        return (tapeIdx < textLen) ? tapeIdx : -1;
+    };
 
     // Cycle counting (slide mode only). A cycle completes when the leftmost
-    // panel transitions from showing the last text character (tape position
+    // panel transitions from showing the last text character (position
     // textLen - 1) to showing anything else. We compare positions, not chars,
     // so repeated characters in the text don't cause false counts.
-    int32_t currLeftmostStripPos = -1;
-    if (!fixed && tapeLen > 0 && !leadIn) {
-        int32_t leftmostTapeIdx = (((marqueeTick - (int32_t)(NUM_DIGITS - 1)) % tapeLen) + tapeLen) % tapeLen;
-        if (leftmostTapeIdx < textLen) currLeftmostStripPos = leftmostTapeIdx;
-        // else: leftmostTapeIdx is in the padding region; treat as -1.
-    }
+    int32_t currLeftmostStripPos = (!fixed) ? stripPosAt(0) : -1;
     if (!fixed && textLen > 0 && cyclesRemaining > 0) {
         if (prevLeftmostIdx == textLen - 1 && currLeftmostStripPos != textLen - 1) {
             cyclesRemaining--;
@@ -109,11 +120,8 @@ void TextAnimation::animate(TFTs& tfts) {
         char ch = ' ';
         if (fixed) {
             if (charIdx < (uint8_t)textLen) ch = text.charAt(charIdx);
-        } else if (textLen > 0 && tapeLen > 0 && !leadIn) {
-            int32_t panelOffsetFromRight = (int32_t)(NUM_DIGITS - 1 - charIdx);
-            int32_t tapeIdx = (((marqueeTick - panelOffsetFromRight) % tapeLen) + tapeLen) % tapeLen;
-            if (tapeIdx < textLen) ch = text.charAt(tapeIdx);
-            // else: padding region; leave ch as ' '.
+        } else {
+            ch = stripAt((int32_t)tick + (int32_t)charIdx);
         }
 
         uint8_t panel = kLeftToRightPanel[charIdx];
