@@ -348,6 +348,9 @@ void onDisplayChanged(ConfigItem<int> &item) {
 	weather->redraw();
 
 	if (IPSClock::getTimeOrDate().value == IPSClock::TEXT) {
+		// Reset tick so activation begins with a clean lead-in (all blank)
+		// frame instead of resuming mid-marquee.
+		tfts->invalidateTextAnimation();
 		tfts->resetTextCycleCount();
 	}
 }
