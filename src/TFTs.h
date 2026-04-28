@@ -131,7 +131,7 @@ private:
   uint16_t defaultTextBackground = TFT_BLACK;
   uint8_t current_graphic = 1;
   char icons[NUM_DIGITS][16];
-  char loadedFilename[64];
+  char loadedFilename[255];
 
   bool enabled;
   fs::FS* fs;
