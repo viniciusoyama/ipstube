@@ -459,7 +459,20 @@ void TFTs::drawDivergenceDigit(uint8_t panel, char ch, bool useFont) {
     sprite.setTextSize(1);
     sprite.setTextDatum(TL_DATUM);
   } else if (ch == '.') {
-    // Dot at bottom-right of its dedicated panel.
+    // Try the active clock face's dot.bmp first; if the face provides one,
+    // it wins (matches whatever style the user picked). Otherwise we already
+    // have the cached space.bmp / black background painted, and fall back to
+    // a hand-drawn dot in the configured color.
+    sprite.pushSprite(0, 0);  // commit the background we already prepared
+    loadedFilename[0] = 0;
+    if (LoadImageIntoBuffer((char*)"/ips/cache/dot.bmp")) {
+      sprite.pushSprite(0, 0);
+      // Restore sprite text state on the way out.
+      sprite.setTextSize(1);
+      sprite.setTextDatum(TL_DATUM);
+      return;
+    }
+    // Fallback: small filled circle bottom-right of the bg we already pushed.
     const uint16_t dotColor = parseDivergenceColor();
     int16_t r = sprite.width() / 12;
     int16_t margin = r + 8;
