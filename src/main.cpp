@@ -243,6 +243,16 @@ IRAMPtrArray<BaseConfigItem*> textSet {
 };
 CompositeConfigItem textConfig("text", 0, textSet);
 
+IRAMPtrArray<BaseConfigItem*> divergenceSet {
+    &IPSClock::getDivergenceNumber(),
+    &IPSClock::getDivergenceRollInterval(),
+    &IPSClock::getDivergenceCycles(),
+    &IPSClock::getDivergenceDwellSeconds(),
+    &IPSClock::getDivergenceDotColor(),
+    0
+};
+CompositeConfigItem divergenceConfig("divergence", 0, divergenceSet);
+
 IRAMPtrArray<BaseConfigItem*> mqttSet {
     // MQTT service
 	&MQTTBroker::getHost(),
@@ -271,6 +281,7 @@ IRAMPtrArray<BaseConfigItem*> configSetRoot {
 	&weatherConfig,
 	&matrixConfig,
 	&textConfig,
+	&divergenceConfig,
 	&mqttConfig,
 	0
 };

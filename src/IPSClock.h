@@ -15,7 +15,8 @@ public:
         DATE,
         WEATHER,
         SLIDE_SHOW,
-        TEXT
+        TEXT,
+        DIVERGENCE
     };
 
     enum Dimming {
@@ -61,6 +62,12 @@ public:
     static StringConfigItem& getTextBgColor()    { static StringConfigItem text_bg_color("text_bg_color", 7, "#000000"); return text_bg_color; }
     static BooleanConfigItem& getTextCycleLimitEnabled() { static BooleanConfigItem text_cycle_limit_enabled("text_cycle_limit_enabled", false); return text_cycle_limit_enabled; }
     static IntConfigItem& getTextCycleLimit()    { static IntConfigItem text_cycle_limit("text_cycle_limit", 1); return text_cycle_limit; }
+
+    static StringConfigItem& getDivergenceNumber()    { static StringConfigItem divergence_number("divergence_number", 5, "00000"); return divergence_number; }
+    static IntConfigItem& getDivergenceRollInterval() { static IntConfigItem divergence_roll_interval("divergence_roll_interval", 80); return divergence_roll_interval; }
+    static ByteConfigItem& getDivergenceCycles()      { static ByteConfigItem divergence_cycles("divergence_cycles", 3); return divergence_cycles; }
+    static IntConfigItem& getDivergenceDwellSeconds() { static IntConfigItem divergence_dwell_seconds("divergence_dwell_seconds", 10); return divergence_dwell_seconds; }
+    static StringConfigItem& getDivergenceDotColor() { static StringConfigItem divergence_dot_color("divergence_dot_color", 7, "#ffffff"); return divergence_dot_color; }
 
     void init();
     void loop();
