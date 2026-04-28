@@ -17,6 +17,7 @@ public:
 	static const char* weatherMenu;
 	static const char* matrixMenu;
 	static const char* textMenu;
+	static const char* divergenceMenu;
 	static const char* mqttMenu;
 	static const char* networkMenu;
 	static const char* infoMenu;

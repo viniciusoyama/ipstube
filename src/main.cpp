@@ -728,6 +728,7 @@ IRAMPtrArray<const char*> items {
 	WSMenuHandler::weatherMenu,
 	WSMenuHandler::matrixMenu,
 	WSMenuHandler::textMenu,
+	WSMenuHandler::divergenceMenu,
 	WSMenuHandler::mqttMenu,
 	WSMenuHandler::networkMenu,
 	WSMenuHandler::infoMenu,
@@ -741,6 +742,7 @@ WSConfigHandler wsFacesHandler(rootConfig, "faces", clockFacesCallback);
 WSConfigHandler wsWeatherHandler(rootConfig, "weather");
 WSConfigHandler wsMatrixHandler(rootConfig, "matrix");
 WSConfigHandler wsTextHandler(rootConfig, "text", textCallback);
+WSConfigHandler wsDivergenceHandler(rootConfig, "divergence");
 WSConfigHandler wsMqttHandler(rootConfig, "mqtt");
 WSConfigHandler wsNetworkHandler(rootConfig, "network", wifiCallback);
 WSInfoHandler wsInfoHandler(infoCallback);
@@ -757,6 +759,7 @@ IRAMPtrArray<WSHandler*> wsHandlers {
 	&wsWeatherHandler,
 	&wsMatrixHandler,
 	&wsTextHandler,
+	&wsDivergenceHandler,
 	NULL
 };
 
