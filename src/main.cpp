@@ -354,6 +354,11 @@ void onWeatherColorChanged(ConfigItem<T> &item) {
 	weather->redraw();
 }
 
+template <class T>
+void onTextConfigChanged(ConfigItem<T> &item) {
+	tfts->invalidateTextAnimation();
+}
+
 bool menuDrawn = false;
 
 void onButtonEvent(const Button *button, Button::Event evt) {
@@ -487,6 +492,13 @@ void clockTaskFn(void *pArg) {
 	ipsClock->getTimeOrDate().setCallback(onDisplayChanged);
 	ipsClock->getBrightnessConfig().setCallback(onBrightnessChanged);
 
+	IPSClock::getTextContent().setCallback(onTextConfigChanged);
+	IPSClock::getTextFixed().setCallback(onTextConfigChanged);
+	IPSClock::getTextInterval().setCallback(onTextConfigChanged);
+	IPSClock::getTextPadding().setCallback(onTextConfigChanged);
+	IPSClock::getTextFgColor().setCallback(onTextConfigChanged);
+	IPSClock::getTextBgColor().setCallback(onTextConfigChanged);
+
 	*oldSlidesSet = slidesSet->value;
 
 	screenSaver = new ScreenSaver();
@@ -568,6 +580,13 @@ void clockTaskFn(void *pArg) {
 			ipsClock->checkIconPack();
 
 			switch (IPSClock::getTimeOrDate().value) {
+				case IPSClock::TEXT:
+					if (ipsClock->clockOn() || (ipsClock->getDimming() == IPSClock::DIM)) {
+						tfts->animateText();
+					} else {
+						tfts->disableAllDisplays();
+					}
+					break;
 				case IPSClock::WEATHER:
 					if (ipsClock->clockOn() || (ipsClock->getDimming() == IPSClock::DIM)) {
 						weather->loop(ipsClock->getBrightness());
