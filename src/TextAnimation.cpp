@@ -109,4 +109,9 @@ void TextAnimation::animate(TFTs& tfts) {
         }
         sprite.pushSprite(0, 0);
     }
+
+    // Restore sprite state so other faces (weather, status, meter) don't inherit
+    // our font size and datum.
+    sprite.setTextSize(1);
+    sprite.setTextDatum(TL_DATUM);
 }
