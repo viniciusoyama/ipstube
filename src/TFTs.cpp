@@ -383,34 +383,55 @@ void TFTs::animateDivergence() {
   release();
 }
 
-void TFTs::drawDivergenceDigit(uint8_t panel, char ch) {
+// Parse "#rrggbb" -> RGB565. Falls back to white on malformed input.
+static uint16_t parseDivergenceColor() {
+  const String& s = IPSClock::getDivergenceColor();
+  if (s.length() != 7 || s.charAt(0) != '#') return 0xFFFF;
+  long v = strtol(s.c_str() + 1, nullptr, 16);
+  uint8_t r = (v >> 16) & 0xFF;
+  uint8_t g = (v >> 8) & 0xFF;
+  uint8_t b = v & 0xFF;
+  return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
+}
+
+void TFTs::drawDivergenceDigit(uint8_t panel, char ch, bool useFont) {
   if (!enabled) return;
 
-  // Digit -> use the same BMP path that clock-face digits go through, so the
-  // active face is honoured. setDigit(force) caches the name and runs
-  // showDigit() which decodes the BMP into the sprite and pushes it.
-  if (ch >= '0' && ch <= '9') {
+  // Settled-state digit -> use the same BMP path that clock-face digits go
+  // through, so the user's active face is honoured.
+  if (ch >= '0' && ch <= '9' && !useFont) {
     char name[2] = { ch, 0 };
     setDigit(panel, name, force);
     return;
   }
 
-  // Blank or dot panel: render directly into the sprite and push.
+  // Everything else renders into the sprite directly: rolling digits (font),
+  // dot, blank.
   chip_select.setDigit(panel);
   StaticSprite& sprite = getSprite();
   sprite.fillSprite(TFT_BLACK);
 
-  if (ch == '.') {
-    // RGB(255, 115, 0) -> RGB565
-    const uint16_t dotColor = ((255 & 0xF8) << 8) | ((115 & 0xFC) << 3) | (0 >> 3);
-    sprite.setTextDatum(BC_DATUM);
-    sprite.setTextColor(dotColor, TFT_BLACK);
+  if (ch >= '0' && ch <= '9') {
+    // Font-rendered rolling digit. Bigger than text-face font for visibility.
+    const uint16_t fg = parseDivergenceColor();
+    sprite.setTextDatum(MC_DATUM);
+    sprite.setTextColor(fg, TFT_BLACK);
     sprite.setTextFont(6);
-    sprite.drawString(".", sprite.width() / 2, sprite.height() - 4);
-    // Restore sprite state so other faces don't inherit our font/datum.
+    sprite.setTextSize(2);
+    char buf[2] = { ch, 0 };
+    sprite.drawString(buf, sprite.width() / 2, sprite.height() / 2);
     sprite.setTextSize(1);
     sprite.setTextDatum(TL_DATUM);
+  } else if (ch == '.') {
+    // Big dot at bottom-right of its dedicated panel.
+    const uint16_t dotColor = parseDivergenceColor();
+    int16_t r = sprite.width() / 6;            // big enough to read at distance
+    int16_t margin = r + 6;
+    int16_t x = sprite.width() - margin;
+    int16_t y = sprite.height() - margin;
+    sprite.fillCircle(x, y, r, dotColor);
   }
+  // ch == ' ' : already blanked.
 
   sprite.pushSprite(0, 0);
 }

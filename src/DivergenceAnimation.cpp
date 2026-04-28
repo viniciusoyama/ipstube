@@ -12,6 +12,7 @@ DivergenceAnimation::DivergenceAnimation() {
     for (uint8_t i = 0; i < 5; i++) {
         targetDigit[i] = 0;
         startOffset[i] = 0;
+        digitSettled[i] = false;
     }
 }
 
@@ -30,6 +31,7 @@ void DivergenceAnimation::restart() {
     for (uint8_t i = 0; i < 5; i++) {
         targetDigit[i] = (uint8_t)(padded[i] - '0');
         startOffset[i] = (uint8_t)random(10);
+        digitSettled[i] = false;
         // Earliest tick at which (startOffset + tick) % 10 == target
         uint8_t toTarget = (uint8_t)(((int)targetDigit[i] - (int)startOffset[i] + 10) % 10);
         uint8_t doneTick = (uint8_t)(cycles * 10 + toTarget);
@@ -37,6 +39,7 @@ void DivergenceAnimation::restart() {
     }
 
     globalTick = 0;
+    firstFrame = true;
     phase = ROLLING;
     finished = false;
     dirty = true;
@@ -81,22 +84,38 @@ void DivergenceAnimation::animate(TFTs& tfts) {
     //   panel charIdx 3 -> digit 2  ('3')
     //   panel charIdx 4 -> digit 3  ('4')
     //   panel charIdx 5 -> digit 4  ('5')
-    for (uint8_t i = 0; i < NUM_DIGITS; i++) {
-        char ch;
-        if (i == 1) {
-            ch = '.';
-        } else {
-            uint8_t digitIdx = (i == 0) ? 0 : (i - 1);
-            uint8_t toTarget = (uint8_t)(((int)targetDigit[digitIdx] - (int)startOffset[digitIdx] + 10) % 10);
-            uint8_t doneTick = (uint8_t)(cycles * 10 + toTarget);
-            uint8_t shown = (globalTick >= doneTick)
-                ? targetDigit[digitIdx]
-                : (uint8_t)((startOffset[digitIdx] + globalTick) % 10);
-            ch = (char)('0' + shown);
-        }
 
-        uint8_t physicalPanel = kLeftToRightPanel[i];
-        tfts.drawDivergenceDigit(physicalPanel, ch);
+    // First frame after activation: paint the dot panel and the blank panel
+    // once. They don't change after that, so subsequent frames skip them.
+    if (firstFrame) {
+        tfts.drawDivergenceDigit(kLeftToRightPanel[1], '.', true);
+        tfts.drawDivergenceDigit(kLeftToRightPanel[5], ' ', true);
+        firstFrame = false;
+    }
+
+    // Per-frame: push only the digit panels that need it.
+    //   - Rolling: render with font (fast) every frame.
+    //   - Just-settled this frame: render with the BMP from the active clock
+    //     face (one-time).
+    //   - Already-settled: skip — no SPI work, leaves the previous BMP push
+    //     intact on that panel.
+    static const uint8_t digitCharIdx[5] = { 0, 2, 3, 4, 5 };
+    for (uint8_t d = 0; d < 5; d++) {
+        if (digitSettled[d]) continue;
+
+        uint8_t toTarget = (uint8_t)(((int)targetDigit[d] - (int)startOffset[d] + 10) % 10);
+        uint8_t doneTick = (uint8_t)(cycles * 10 + toTarget);
+        uint8_t physicalPanel = kLeftToRightPanel[digitCharIdx[d]];
+
+        if (globalTick >= doneTick) {
+            // Just settled — switch to clock-face BMP for the final look.
+            tfts.drawDivergenceDigit(physicalPanel, (char)('0' + targetDigit[d]), false);
+            digitSettled[d] = true;
+        } else {
+            // Still rolling — fast font render.
+            uint8_t shown = (uint8_t)((startOffset[d] + globalTick) % 10);
+            tfts.drawDivergenceDigit(physicalPanel, (char)('0' + shown), true);
+        }
     }
 
     if (globalTick < 255) globalTick++;

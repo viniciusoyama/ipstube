@@ -69,6 +69,7 @@ public:
     static IntConfigItem& getDivergenceRollInterval() { static IntConfigItem* p = new IntConfigItem("divergence_roll_interval", 50); return *p; }
     static ByteConfigItem& getDivergenceCycles()      { static ByteConfigItem* p = new ByteConfigItem("divergence_cycles", 3); return *p; }
     static ByteConfigItem& getDivergenceDwellSeconds() { static ByteConfigItem* p = new ByteConfigItem("divergence_dwell_seconds", 10); return *p; }
+    static StringConfigItem& getDivergenceColor()     { static StringConfigItem* p = new StringConfigItem("divergence_color", 7, "#ff7300"); return *p; }
 
     void init();
     void loop();

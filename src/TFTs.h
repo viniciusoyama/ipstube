@@ -80,11 +80,12 @@ public:
   void animateDivergence();
   void restartDivergenceAnimation();
   bool isDivergenceAnimationFinished();
-  // Renders a single panel for the divergence meter. `ch`:
-  //   '0'..'9' -> digit BMP from the active clock face
-  //   '.'      -> dedicated dot panel (black background + "." in dot color)
-  //   ' '      -> blank panel (all black)
-  void drawDivergenceDigit(uint8_t panel, char ch);
+  // Renders a single panel for the divergence meter.
+  //   ch '0'..'9', useFont=true  -> font-rendered digit (fast, used during rolling)
+  //   ch '0'..'9', useFont=false -> BMP from the active clock face (used on settle)
+  //   ch '.'                     -> dedicated dot panel (black background + dot)
+  //   ch ' '                     -> blank panel (all black)
+  void drawDivergenceDigit(uint8_t panel, char ch, bool useFont);
 
   void setImageJustification(image_justification_t value) { imageJustification = value; }
   void setBox(uint16_t w, uint16_t h) { boxWidth = w; boxHeight = h; }

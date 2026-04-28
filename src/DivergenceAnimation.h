@@ -39,6 +39,8 @@ private:
     uint8_t maxDoneTick = 0;
     uint8_t targetDigit[5];            // 0..9
     uint8_t startOffset[5];            // random initial digit shown
+    bool digitSettled[5];              // once true, that panel won't be repushed
+    bool firstFrame = true;            // gate the one-time dot/blank panel paint
 
     uint32_t dwellStartMs = 0;
 };

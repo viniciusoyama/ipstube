@@ -249,6 +249,7 @@ IRAMPtrArray<BaseConfigItem*> divergenceSet {
     &IPSClock::getDivergenceRollInterval(),
     &IPSClock::getDivergenceCycles(),
     &IPSClock::getDivergenceDwellSeconds(),
+    &IPSClock::getDivergenceColor(),
     0
 };
 CompositeConfigItem divergenceConfig("divergence", 0, divergenceSet);
