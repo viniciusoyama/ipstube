@@ -324,8 +324,8 @@ void TFTs::drawStatus() {
 }
 
 TextAnimation& TFTs::getTextAnimator() {
-  static TextAnimation animator;
-  return animator;
+  static TextAnimation* p = new TextAnimation();
+  return *p;
 }
 
 void TFTs::invalidateTextAnimation() {
@@ -353,6 +353,222 @@ void TFTs::animateText() {
 
   chip_select.setDigitMap(saved, true);
   release();
+}
+
+DivergenceAnimation& TFTs::getDivergenceAnimator() {
+  static DivergenceAnimation* p = new DivergenceAnimation();
+  return *p;
+}
+
+void TFTs::restartDivergenceAnimation() {
+  getDivergenceAnimator().restart();
+}
+
+bool TFTs::isDivergenceAnimationFinished() {
+  return getDivergenceAnimator().isFinished();
+}
+
+void TFTs::animateDivergence() {
+  DivergenceAnimation& animator = getDivergenceAnimator();
+  if (!animator.loop()) {
+    return;
+  }
+
+  claim();
+  uint8_t saved = chip_select.getDigitMap();
+
+  animator.animate(*this);
+
+  chip_select.setDigitMap(saved, true);
+  release();
+}
+
+// Hardcoded divergence accent color: RGB(255, 115, 0) -> RGB565.
+// Used only by fallback paths (no clock-face dot.bmp, font rolling).
+static const uint16_t DIVERGENCE_ACCENT =
+  ((255 & 0xF8) << 8) | ((115 & 0xFC) << 3) | (0 >> 3);
+
+void TFTs::ensureDivergenceBackground() {
+  if (divergenceBg != nullptr) return;
+  const size_t bytes = (size_t)TFT_WIDTH * (size_t)TFT_HEIGHT * 2;
+  divergenceBg = (uint8_t*) heap_caps_malloc(bytes, MALLOC_CAP_DMA);
+  if (!divergenceBg) return;  // out of memory; drawDivergenceDigit will fall back to black
+
+  // Load the active clock face's "space" tile into the working sprite, then
+  // snapshot it into our cache buffer.
+  loadedFilename[0] = 0;  // force a real disk read
+  char filename[64];
+  strcpy(filename, "/ips/cache/space.bmp");
+  // LoadImageIntoBuffer() unconditionally returns false (upstream bug);
+  // detect success by checking whether it set loadedFilename.
+  LoadImageIntoBuffer(filename);
+  if (loadedFilename[0] != 0) {
+    memcpy(divergenceBg, StaticSprite::output_buffer, bytes);
+  } else {
+    memset(divergenceBg, 0, bytes);
+  }
+}
+
+void TFTs::clearDivergenceDigitCache() {
+  for (uint8_t i = 0; i < divergenceCacheCount; i++) {
+    if (divergenceCache[i].buf) free(divergenceCache[i].buf);
+    divergenceCache[i].buf = nullptr;
+  }
+  divergenceCacheCount = 0;
+}
+
+bool TFTs::buildDivergenceDigitCache(const uint8_t digits[], uint8_t count) {
+  clearDivergenceDigitCache();
+  if (count == 0 || count > 10) return false;
+
+  // Free the 64 KB space.bmp background buffer to make heap room. With a
+  // working digit cache we don't need it: rolling pushes cached digits
+  // directly, and the dot/blank paths fall back to fillSprite(TFT_BLACK).
+  if (divergenceBg != nullptr) {
+    free(divergenceBg);
+    divergenceBg = nullptr;
+  }
+
+  const size_t cacheBytes = (size_t)DIV_CACHE_W * (size_t)DIV_CACHE_H * sizeof(uint16_t);
+
+  for (uint8_t i = 0; i < count; i++) {
+    uint16_t* buf = (uint16_t*) malloc(cacheBytes);
+    if (!buf) {
+      clearDivergenceDigitCache();
+      return false;
+    }
+
+    char filename[24];
+    snprintf(filename, sizeof(filename), "/ips/cache/%u.bmp", (unsigned)digits[i]);
+    loadedFilename[0] = 0;
+    // LoadImageIntoBuffer() unconditionally returns false; detect real
+    // success by whether it populated loadedFilename.
+    LoadImageIntoBuffer(filename);
+    if (loadedFilename[0] == 0) {
+      free(buf);
+      clearDivergenceDigitCache();
+      return false;
+    }
+
+    // Downsample 135x240 -> 34x60 nearest-neighbour (4x reduction in each
+    // dimension). Source is the working sprite's RGB565 buffer.
+    const uint16_t* src = (const uint16_t*) StaticSprite::output_buffer;
+    for (int y = 0; y < DIV_CACHE_H; y++) {
+      for (int x = 0; x < DIV_CACHE_W; x++) {
+        int sx = x * 4;
+        if (sx >= TFT_WIDTH) sx = TFT_WIDTH - 1;
+        buf[y * DIV_CACHE_W + x] = src[(y * 4) * TFT_WIDTH + sx];
+      }
+    }
+
+    divergenceCache[i].digit = digits[i];
+    divergenceCache[i].buf = buf;
+    divergenceCacheCount++;
+  }
+  return true;
+}
+
+bool TFTs::pushCachedDivergenceDigit(uint8_t panel, uint8_t digit) {
+  if (!enabled) return false;
+
+  DivDigitCache* entry = nullptr;
+  for (uint8_t i = 0; i < divergenceCacheCount; i++) {
+    if (divergenceCache[i].digit == digit) {
+      entry = &divergenceCache[i];
+      break;
+    }
+  }
+  if (!entry || !entry->buf) return false;
+
+  chip_select.setDigit(panel);
+
+  // Upsample 34x60 -> 135x240 nearest-neighbour directly into the working
+  // sprite buffer (4x in each dimension). Per pixel: one indexed read +
+  // one indexed write.
+  uint16_t* dst = (uint16_t*) StaticSprite::output_buffer;
+  const uint16_t* src = entry->buf;
+  for (int Y = 0; Y < TFT_HEIGHT; Y++) {
+    int cy = Y / 4;
+    if (cy >= DIV_CACHE_H) cy = DIV_CACHE_H - 1;
+    const uint16_t* row = &src[cy * DIV_CACHE_W];
+    uint16_t* dstRow = &dst[Y * TFT_WIDTH];
+    for (int X = 0; X < TFT_WIDTH; X++) {
+      int cx = X / 4;
+      if (cx >= DIV_CACHE_W) cx = DIV_CACHE_W - 1;
+      dstRow[X] = row[cx];
+    }
+  }
+
+  loadedFilename[0] = 0;  // sprite buffer no longer matches any cached BMP
+  getSprite().pushSprite(0, 0);
+  return true;
+}
+
+void TFTs::drawDivergenceDigit(uint8_t panel, char ch, bool useFont) {
+  if (!enabled) return;
+
+  // Settled-state digit -> use the same BMP path that clock-face digits go
+  // through, so the user's active face is honoured. Invalidate the BMP cache
+  // first: previous font/dot/blank renders overwrote the sprite buffer
+  // without updating the cache key, so showDigit() would otherwise skip the
+  // disk read and push whatever font garbage is still in the sprite.
+  if (ch >= '0' && ch <= '9' && !useFont) {
+    loadedFilename[0] = 0;
+    char name[2] = { ch, 0 };
+    setDigit(panel, name, force);
+    return;
+  }
+
+  // Dot panel: use /ips/cache/dot.bmp directly if present. No background
+  // overlay needed since the BMP fills the whole panel.
+  if (ch == '.') {
+    chip_select.setDigit(panel);
+    loadedFilename[0] = 0;
+    LoadImageIntoBuffer((char*)"/ips/cache/dot.bmp");
+    if (loadedFilename[0] != 0) {
+      getSprite().pushSprite(0, 0);
+      return;
+    }
+    // Fall through to the bg + hand-drawn-circle fallback below.
+  }
+
+  // Rolling digit / blank / dot fallback: prepare bg in the working sprite,
+  // overlay if needed, push.
+  ensureDivergenceBackground();
+  chip_select.setDigit(panel);
+  StaticSprite& sprite = getSprite();
+  const size_t bgBytes = (size_t)TFT_WIDTH * (size_t)TFT_HEIGHT * 2;
+  if (divergenceBg != nullptr) {
+    memcpy(StaticSprite::output_buffer, divergenceBg, bgBytes);
+    loadedFilename[0] = 0;
+  } else {
+    sprite.fillSprite(TFT_BLACK);
+  }
+
+  if (ch >= '0' && ch <= '9') {
+    // Font-rendered rolling digit. Single-arg setTextColor so the glyph
+    // paints transparently over the bg (no black rectangle around the digit).
+    const uint16_t fg = DIVERGENCE_ACCENT;
+    sprite.setTextDatum(MC_DATUM);
+    sprite.setTextColor(fg);
+    sprite.setTextFont(6);
+    sprite.setTextSize(2);
+    char buf[2] = { ch, 0 };
+    sprite.drawString(buf, sprite.width() / 2, sprite.height() / 2);
+    sprite.setTextSize(1);
+    sprite.setTextDatum(TL_DATUM);
+  } else if (ch == '.') {
+    // dot.bmp wasn't available: hand-drawn fallback in the configured color.
+    const uint16_t dotColor = DIVERGENCE_ACCENT;
+    int16_t r = sprite.width() / 12;
+    int16_t margin = r + 8;
+    int16_t x = sprite.width() - margin;
+    int16_t y = sprite.height() - margin;
+    sprite.fillCircle(x, y, r, dotColor);
+  }
+  // ch == ' ' : already blanked.
+
+  sprite.pushSprite(0, 0);
 }
 
 void TFTs::animateRain() {
@@ -846,9 +1062,15 @@ bool TFTs::LoadImageBytesIntoSprite(int16_t w, int16_t h, uint8_t bitDepth, int1
           case 32:
             inputPtr++;
           case 24:
-            b = *inputPtr++;
-            g = *inputPtr++;
-            r = *inputPtr++;
+            // The pixel-packing code further down expects r/g/b in
+            // RGB565 component widths (5/6/5 bits). 24-bit BMPs store
+            // 8-bit channels, so pre-shift them down — without this the
+            // packing `(r << 11) | (g << 5) | b` overflows uint16_t and
+            // truncates chaotically, producing garbled colour. Same for
+            // 32-bit which falls through (alpha byte already skipped).
+            b = *inputPtr++ >> 3;
+            g = *inputPtr++ >> 2;
+            r = *inputPtr++ >> 3;
             break;
           case 16:
             {

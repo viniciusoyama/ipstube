@@ -1,0 +1,27 @@
+<div data-role="page" id="Divergence Meter">
+    <div data-role="header" data-position="fixed">
+        <h1>Divergence Meter</h1>
+        <a href="#mainMenu" data-rel="main-menu-panel" class="ui-btn ui-btn-left ui-btn-icon-notext ui-icon-bars ui-corner-all"></a>
+    </div>
+    <div data-role="content">
+        <form action="/set_divergence" method="POST" id="divergence_form">
+            <label for="divergence_number">Number (5 digits)</label>
+            <input onchange="elementChange(this)" type="text" name="divergence_number" id="divergence_number" maxlength="5" pattern="[0-9]{1,5}" inputmode="numeric" value="00000">
+
+            <div class="clearFloats"></div>
+            <label for="divergence_roll_interval">Wait between digit changes (ms)</label>
+            <input onchange="elementChange(this)" type="number" name="divergence_roll_interval" id="divergence_roll_interval" min="20" max="2000" value="50">
+
+            <div class="clearFloats"></div>
+            <label for="divergence_cycles">Cycles per panel (full 0..9 passes before settling)</label>
+            <input onchange="elementChange(this)" type="number" name="divergence_cycles" id="divergence_cycles" min="0" max="20" value="3">
+
+            <div class="clearFloats"></div>
+            <label for="divergence_dwell_seconds">Hold number for (seconds)</label>
+            <input onchange="elementChange(this)" type="number" name="divergence_dwell_seconds" id="divergence_dwell_seconds" min="1" max="600" value="10">
+
+            <div class="clearFloats"></div>
+            <button type="button" class="ui-btn ui-btn-b" onclick="onActivateMeter()">Activate Meter</button>
+        </form>
+    </div>
+</div>

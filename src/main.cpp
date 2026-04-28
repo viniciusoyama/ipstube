@@ -155,7 +155,8 @@ enum WEATHER_MESSAGE {
 };
 
 enum MAIN_MESSAGE {
-	MQTT_PUBLISH = 1
+	MQTT_PUBLISH = 1,
+	ACTIVATE_DIVERGENCE = 2
 };
 
 // Clock config
@@ -243,6 +244,15 @@ IRAMPtrArray<BaseConfigItem*> textSet {
 };
 CompositeConfigItem textConfig("text", 0, textSet);
 
+IRAMPtrArray<BaseConfigItem*> divergenceSet {
+    &IPSClock::getDivergenceNumber(),
+    &IPSClock::getDivergenceRollInterval(),
+    &IPSClock::getDivergenceCycles(),
+    &IPSClock::getDivergenceDwellSeconds(),
+    0
+};
+CompositeConfigItem divergenceConfig("divergence", 0, divergenceSet);
+
 IRAMPtrArray<BaseConfigItem*> mqttSet {
     // MQTT service
 	&MQTTBroker::getHost(),
@@ -271,6 +281,7 @@ IRAMPtrArray<BaseConfigItem*> configSetRoot {
 	&weatherConfig,
 	&matrixConfig,
 	&textConfig,
+	&divergenceConfig,
 	&mqttConfig,
 	0
 };
@@ -540,6 +551,12 @@ void clockTaskFn(void *pArg) {
 		while(xQueueReceive(mainQueue, &value, toSleep) == pdTRUE) {
 			if (value == MQTT_PUBLISH) {
 				mqttBroker->publishState();
+			} else if (value == ACTIVATE_DIVERGENCE) {
+				tfts->restartDivergenceAnimation();
+				IPSClock::getTimeOrDate() = IPSClock::DIVERGENCE;
+				IPSClock::getTimeOrDate().put();
+				broadcastUpdate(IPSClock::getTimeOrDate());
+				IPSClock::getTimeOrDate().notify();
 			}
 			DEBUG("Clock task getting right to it");
 		}
@@ -597,6 +614,19 @@ void clockTaskFn(void *pArg) {
 					if (ipsClock->clockOn() || (ipsClock->getDimming() == IPSClock::DIM)) {
 						tfts->animateText();
 						if (tfts->isTextAnimationFinished()) {
+							IPSClock::getTimeOrDate() = IPSClock::TIME;
+							IPSClock::getTimeOrDate().put();
+							broadcastUpdate(IPSClock::getTimeOrDate());
+							IPSClock::getTimeOrDate().notify();
+						}
+					} else {
+						tfts->disableAllDisplays();
+					}
+					break;
+				case IPSClock::DIVERGENCE:
+					if (ipsClock->clockOn() || (ipsClock->getDimming() == IPSClock::DIM)) {
+						tfts->animateDivergence();
+						if (tfts->isDivergenceAnimationFinished()) {
 							IPSClock::getTimeOrDate() = IPSClock::TIME;
 							IPSClock::getTimeOrDate().put();
 							broadcastUpdate(IPSClock::getTimeOrDate());
@@ -697,6 +727,7 @@ IRAMPtrArray<const char*> items {
 	WSMenuHandler::weatherMenu,
 	WSMenuHandler::matrixMenu,
 	WSMenuHandler::textMenu,
+	WSMenuHandler::divergenceMenu,
 	WSMenuHandler::mqttMenu,
 	WSMenuHandler::networkMenu,
 	WSMenuHandler::infoMenu,
@@ -710,6 +741,7 @@ WSConfigHandler wsFacesHandler(rootConfig, "faces", clockFacesCallback);
 WSConfigHandler wsWeatherHandler(rootConfig, "weather");
 WSConfigHandler wsMatrixHandler(rootConfig, "matrix");
 WSConfigHandler wsTextHandler(rootConfig, "text", textCallback);
+WSConfigHandler wsDivergenceHandler(rootConfig, "divergence");
 WSConfigHandler wsMqttHandler(rootConfig, "mqtt");
 WSConfigHandler wsNetworkHandler(rootConfig, "network", wifiCallback);
 WSInfoHandler wsInfoHandler(infoCallback);
@@ -726,6 +758,7 @@ IRAMPtrArray<WSHandler*> wsHandlers {
 	&wsWeatherHandler,
 	&wsMatrixHandler,
 	&wsTextHandler,
+	&wsDivergenceHandler,
 	NULL
 };
 
@@ -804,6 +837,9 @@ void updateValue(int screen, String pair) {
 	} else if (_key == "get_weather") {
 		uint32_t value = WEATHER_UPDATE;
 		xQueueSend(weatherQueue, &value, 0);
+	} else if (_key == "activate_meter") {
+		uint32_t v = ACTIVATE_DIVERGENCE;
+		xQueueSend(mainQueue, &v, 0);
 	} else if (_key == "wifi_ap") {
 		setWiFiAP(value == "true" ? true : false);
 	}

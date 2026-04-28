@@ -8,6 +8,7 @@
 #include "ChipSelect.h"
 #include "DigitalRainAnimation.h"
 #include "TextAnimation.h"
+#include "DivergenceAnimation.h"
 
 #define TFT_PWM_CHANNEL 0
 #define TFT_PWM_FREQ 20000   // PWM frequency for TFT dimming (Hz)
@@ -76,6 +77,28 @@ public:
   void resetTextCycleCount();
   bool isTextAnimationFinished();
 
+  void animateDivergence();
+  void restartDivergenceAnimation();
+  bool isDivergenceAnimationFinished();
+  // Renders a single panel for the divergence meter.
+  //   ch '0'..'9', useFont=true  -> font-rendered digit (fast, used during rolling
+  //                                  when no cached BMP is available)
+  //   ch '0'..'9', useFont=false -> BMP from the active clock face (used on settle)
+  //   ch '.'                     -> dedicated dot panel (uses /ips/cache/dot.bmp
+  //                                  if present, else hand-drawn fallback)
+  //   ch ' '                     -> blank panel (all black)
+  void drawDivergenceDigit(uint8_t panel, char ch, bool useFont);
+
+  // Pre-build a half-resolution cache of up to 5 digit BMPs. Used to roll
+  // through the target digits during the divergence meter without re-loading
+  // BMPs from LittleFS each frame. Returns true on full success; on failure,
+  // the cache is empty and the caller should fall back to font rendering.
+  bool buildDivergenceDigitCache(const uint8_t digits[], uint8_t count);
+
+  // Push a cached digit (scaled up nearest-neighbour to panel size) onto a
+  // panel. Returns true if the digit was found in the cache.
+  bool pushCachedDivergenceDigit(uint8_t panel, uint8_t digit);
+
   void setImageJustification(image_justification_t value) { imageJustification = value; }
   void setBox(uint16_t w, uint16_t h) { boxWidth = w; boxHeight = h; }
   // Controls the power to all displays
@@ -108,6 +131,7 @@ private:
   DigitalRainAnimation& getMatrixAnimator();
 #endif
   TextAnimation& getTextAnimator();
+  DivergenceAnimation& getDivergenceAnimator();
   void drawStatus();
 
   byte showDigits = 0;
@@ -138,7 +162,29 @@ private:
   uint32_t read32(fs::File &f);
 
   uint8_t FileInBuffer=255; // invalid, always load first image
-  uint8_t NextFileRequired = 0; 
+  uint8_t NextFileRequired = 0;
+
+  // Lazy-allocated 64 KB buffer holding the user's clock-face "space.bmp"
+  // image, used as the background for the rolling phase of the divergence
+  // meter so the font-rendered digits sit on the face's natural background
+  // instead of pure black.
+  uint8_t* divergenceBg = nullptr;
+  void ensureDivergenceBackground();
+
+  // Quarter-resolution cached digit BMPs for the divergence meter rolling
+  // phase. 10 entries (one per digit 0..9), each ~4 KB (34 x 60 RGB565).
+  // Total ~40 KB heap — sized to fit even on heaps that were only
+  // accommodating 3 half-res digits before. Built fresh per activation in
+  // buildDivergenceDigitCache(), kept until rebuilt or freed.
+  static const int DIV_CACHE_W = 34;     // ceil(TFT_WIDTH / 4)
+  static const int DIV_CACHE_H = 60;     // TFT_HEIGHT / 4
+  struct DivDigitCache {
+    uint8_t digit;       // 0..9
+    uint16_t* buf;       // DIV_CACHE_W * DIV_CACHE_H pixels, RGB565
+  };
+  DivDigitCache divergenceCache[10];
+  uint8_t divergenceCacheCount = 0;
+  void clearDivergenceDigitCache();
 };
 
 extern TFTs *tfts;
