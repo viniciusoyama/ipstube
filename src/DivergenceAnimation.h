@@ -30,12 +30,15 @@ private:
     uint32_t lastDrawMs = 0;
     bool dirty = true;
 
-    // Per-panel rolling state. Panels 0..4 (reading order) take the 5 input
-    // digits; panel 5 stays blank.
-    uint8_t targetDigit[5];            // 0..9; only 5 active panels
-    uint8_t panelTicks[5];             // ticks consumed by panel; once it
-                                       // reaches N*10 + targetDigit the panel
-                                       // is settled. Caps at 255, so cycles<=24.
+    // Single global tick counter — all panels advance together, but each
+    // panel starts at a random digit. Per panel:
+    //   shown = (startOffset[i] + globalTick) mod 10
+    // Each panel settles on its target after enough cycles to wrap around to
+    // it, so different panels finish at slightly different ticks.
+    uint8_t globalTick = 0;
+    uint8_t maxDoneTick = 0;
+    uint8_t targetDigit[5];            // 0..9
+    uint8_t startOffset[5];            // random initial digit shown
 
     uint32_t dwellStartMs = 0;
 };

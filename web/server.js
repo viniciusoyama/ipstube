@@ -262,7 +262,7 @@ var state = {
 	},
 	"10": {
 		'divergence_number' : '32643',
-		'divergence_roll_interval' : 80,
+		'divergence_roll_interval' : 50,
 		'divergence_cycles' : 3,
 		'divergence_dwell_seconds' : 10
 	}

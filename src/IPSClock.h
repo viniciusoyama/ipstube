@@ -66,7 +66,7 @@ public:
     static IntConfigItem& getTextCycleLimit()    { static IntConfigItem* p = new IntConfigItem("text_cycle_limit", 1); return *p; }
 
     static StringConfigItem& getDivergenceNumber()    { static StringConfigItem* p = new StringConfigItem("divergence_number", 5, "00000"); return *p; }
-    static IntConfigItem& getDivergenceRollInterval() { static IntConfigItem* p = new IntConfigItem("divergence_roll_interval", 80); return *p; }
+    static IntConfigItem& getDivergenceRollInterval() { static IntConfigItem* p = new IntConfigItem("divergence_roll_interval", 50); return *p; }
     static ByteConfigItem& getDivergenceCycles()      { static ByteConfigItem* p = new ByteConfigItem("divergence_cycles", 3); return *p; }
     static ByteConfigItem& getDivergenceDwellSeconds() { static ByteConfigItem* p = new ByteConfigItem("divergence_dwell_seconds", 10); return *p; }
 

@@ -406,10 +406,13 @@ void TFTs::drawDivergenceDigit(uint8_t panel, char digitChar, bool drawDot) {
   TFT_eSprite& sprite = drawImage(panel);
 
   if (drawDot) {
-    // Hardcoded dot color: RGB(255, 115, 0) -> RGB565 0xFB80.
+    // Hardcoded dot color: RGB(255, 115, 0) -> RGB565.
     const uint16_t dotColor = ((255 & 0xF8) << 8) | ((115 & 0xFC) << 3) | (0 >> 3);
     int16_t r = max((int16_t)6, (int16_t)(sprite.height() / 30));
-    int16_t x = sprite.width() - r - 4;
+    // Bottom-LEFT corner: appears just before the digit on this panel, so
+    // visually the dot sits between the previous panel's digit and this one
+    // (e.g. "1.2345" with the dot on the panel showing "2").
+    int16_t x = r + 4;
     int16_t y = sprite.height() - r - 4;
     sprite.fillCircle(x, y, r, dotColor);
   }

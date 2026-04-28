@@ -2,10 +2,16 @@
 #include "TFTs.h"
 #include "IPSClock.h"
 
+// Reading-order mapping: index 0 is leftmost panel, index 5 is rightmost.
+// Works for both panel orderings (HARDWARE_PunkCyber_CLOCK and the rest).
+static const uint8_t kLeftToRightPanel[NUM_DIGITS] = {
+    HOURS_TENS, HOURS_ONES, MINUTES_TENS, MINUTES_ONES, SECONDS_TENS, SECONDS_ONES
+};
+
 DivergenceAnimation::DivergenceAnimation() {
     for (uint8_t i = 0; i < 5; i++) {
         targetDigit[i] = 0;
-        panelTicks[i] = 0;
+        startOffset[i] = 0;
     }
 }
 
@@ -17,11 +23,20 @@ void DivergenceAnimation::restart() {
         if (c >= '0' && c <= '9') padded[i] = c;
     }
 
+    uint8_t cycles = IPSClock::getDivergenceCycles().value;
+    if (cycles > 24) cycles = 24;
+
+    maxDoneTick = 0;
     for (uint8_t i = 0; i < 5; i++) {
         targetDigit[i] = (uint8_t)(padded[i] - '0');
-        panelTicks[i] = 0;
+        startOffset[i] = (uint8_t)random(10);
+        // Earliest tick at which (startOffset + tick) % 10 == target
+        uint8_t toTarget = (uint8_t)(((int)targetDigit[i] - (int)startOffset[i] + 10) % 10);
+        uint8_t doneTick = (uint8_t)(cycles * 10 + toTarget);
+        if (doneTick > maxDoneTick) maxDoneTick = doneTick;
     }
 
+    globalTick = 0;
     phase = ROLLING;
     finished = false;
     dirty = true;
@@ -57,15 +72,7 @@ void DivergenceAnimation::animate(TFTs& tfts) {
     if (phase != ROLLING) return;
 
     uint8_t cycles = IPSClock::getDivergenceCycles().value;
-    if (cycles > 24) cycles = 24;  // panelTicks is uint8_t; clamp so 24*10+9 fits
-
-    bool allSettled = true;
-    for (uint8_t i = 0; i < 5; i++) {
-        uint8_t totalTicks = cycles * 10 + targetDigit[i];
-        if (panelTicks[i] < totalTicks) {
-            allSettled = false;
-        }
-    }
+    if (cycles > 24) cycles = 24;
 
     for (uint8_t i = 0; i < NUM_DIGITS; i++) {
         char digitChar = ' ';
@@ -74,23 +81,24 @@ void DivergenceAnimation::animate(TFTs& tfts) {
         if (i == 5) {
             digitChar = ' ';
         } else {
-            uint8_t totalTicks = cycles * 10 + targetDigit[i];
-            uint8_t shown = (panelTicks[i] >= totalTicks)
+            uint8_t toTarget = (uint8_t)(((int)targetDigit[i] - (int)startOffset[i] + 10) % 10);
+            uint8_t doneTick = (uint8_t)(cycles * 10 + toTarget);
+            uint8_t shown = (globalTick >= doneTick)
                 ? targetDigit[i]
-                : (uint8_t)(panelTicks[i] % 10);
+                : (uint8_t)((startOffset[i] + globalTick) % 10);
             digitChar = (char)('0' + shown);
-            if (i == 0) drawDot = true;
+            // Decimal dot lives on the second panel (reading order index 1),
+            // bottom-left, so it appears between digit 0 and digit 1.
+            if (i == 1) drawDot = true;
         }
 
-        tfts.drawDivergenceDigit(i, digitChar, drawDot);
+        uint8_t physicalPanel = kLeftToRightPanel[i];
+        tfts.drawDivergenceDigit(physicalPanel, digitChar, drawDot);
     }
 
-    for (uint8_t i = 0; i < 5; i++) {
-        uint8_t totalTicks = cycles * 10 + targetDigit[i];
-        if (panelTicks[i] < totalTicks) panelTicks[i]++;
-    }
+    if (globalTick < 255) globalTick++;
 
-    if (allSettled) {
+    if (globalTick >= maxDoneTick) {
         phase = DWELLING;
         dwellStartMs = millis();
     }

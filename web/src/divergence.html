@@ -9,8 +9,8 @@
             <input onchange="elementChange(this)" type="text" name="divergence_number" id="divergence_number" maxlength="5" pattern="[0-9]{1,5}" inputmode="numeric" value="00000">
 
             <div class="clearFloats"></div>
-            <label for="divergence_roll_interval">Roll interval (ms per increment)</label>
-            <input onchange="elementChange(this)" type="number" name="divergence_roll_interval" id="divergence_roll_interval" min="20" max="2000" value="80">
+            <label for="divergence_roll_interval">Wait between digit changes (ms)</label>
+            <input onchange="elementChange(this)" type="number" name="divergence_roll_interval" id="divergence_roll_interval" min="20" max="2000" value="50">
 
             <div class="clearFloats"></div>
             <label for="divergence_cycles">Cycles per panel (full 0..9 passes before settling)</label>
