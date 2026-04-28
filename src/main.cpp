@@ -73,6 +73,7 @@ void setWiFiAP(bool on);
 void infoCallback();
 String wifiCallback();
 String clockFacesCallback();
+String textCallback();
 void broadcastUpdate(String msg);
 void broadcastUpdate(const BaseConfigItem& item);
 void setFace(const char *menuLabel);
@@ -229,6 +230,17 @@ IRAMPtrArray<BaseConfigItem*> matrixSet {
 };
 CompositeConfigItem matrixConfig("matrix", 0, matrixSet);
 
+IRAMPtrArray<BaseConfigItem*> textSet {
+    &IPSClock::getTextContent(),
+    &IPSClock::getTextFixed(),
+    &IPSClock::getTextInterval(),
+    &IPSClock::getTextPadding(),
+    &IPSClock::getTextFgColor(),
+    &IPSClock::getTextBgColor(),
+    0
+};
+CompositeConfigItem textConfig("text", 0, textSet);
+
 IRAMPtrArray<BaseConfigItem*> mqttSet {
     // MQTT service
 	&MQTTBroker::getHost(),
@@ -256,6 +268,7 @@ IRAMPtrArray<BaseConfigItem*> configSetRoot {
 	&facesConfig,
 	&weatherConfig,
 	&matrixConfig,
+	&textConfig,
 	&mqttConfig,
 	0
 };
@@ -340,6 +353,11 @@ void onBrightnessChanged(ConfigItem<byte> &item) {
 template <class T>
 void onWeatherColorChanged(ConfigItem<T> &item) {
 	weather->redraw();
+}
+
+template <class T>
+void onTextConfigChanged(ConfigItem<T> &item) {
+	tfts->invalidateTextAnimation();
 }
 
 bool menuDrawn = false;
@@ -475,6 +493,13 @@ void clockTaskFn(void *pArg) {
 	ipsClock->getTimeOrDate().setCallback(onDisplayChanged);
 	ipsClock->getBrightnessConfig().setCallback(onBrightnessChanged);
 
+	IPSClock::getTextContent().setCallback(onTextConfigChanged);
+	IPSClock::getTextFixed().setCallback(onTextConfigChanged);
+	IPSClock::getTextInterval().setCallback(onTextConfigChanged);
+	IPSClock::getTextPadding().setCallback(onTextConfigChanged);
+	IPSClock::getTextFgColor().setCallback(onTextConfigChanged);
+	IPSClock::getTextBgColor().setCallback(onTextConfigChanged);
+
 	*oldSlidesSet = slidesSet->value;
 
 	screenSaver = new ScreenSaver();
@@ -556,6 +581,13 @@ void clockTaskFn(void *pArg) {
 			ipsClock->checkIconPack();
 
 			switch (IPSClock::getTimeOrDate().value) {
+				case IPSClock::TEXT:
+					if (ipsClock->clockOn() || (ipsClock->getDimming() == IPSClock::DIM)) {
+						tfts->animateText();
+					} else {
+						tfts->disableAllDisplays();
+					}
+					break;
 				case IPSClock::WEATHER:
 					if (ipsClock->clockOn() || (ipsClock->getDimming() == IPSClock::DIM)) {
 						weather->loop(ipsClock->getBrightness());
@@ -646,6 +678,7 @@ IRAMPtrArray<const char*> items {
 	WSMenuHandler::facesMenu,
 	WSMenuHandler::weatherMenu,
 	WSMenuHandler::matrixMenu,
+	WSMenuHandler::textMenu,
 	WSMenuHandler::mqttMenu,
 	WSMenuHandler::networkMenu,
 	WSMenuHandler::infoMenu,
@@ -658,6 +691,7 @@ WSConfigHandler wsLEDHandler(rootConfig, "leds");
 WSConfigHandler wsFacesHandler(rootConfig, "faces", clockFacesCallback);
 WSConfigHandler wsWeatherHandler(rootConfig, "weather");
 WSConfigHandler wsMatrixHandler(rootConfig, "matrix");
+WSConfigHandler wsTextHandler(rootConfig, "text", textCallback);
 WSConfigHandler wsMqttHandler(rootConfig, "mqtt");
 WSConfigHandler wsNetworkHandler(rootConfig, "network", wifiCallback);
 WSInfoHandler wsInfoHandler(infoCallback);
@@ -673,6 +707,7 @@ IRAMPtrArray<WSHandler*> wsHandlers {
 	&wsNetworkHandler,
 	&wsWeatherHandler,
 	&wsMatrixHandler,
+	&wsTextHandler,
 	NULL
 };
 
@@ -758,22 +793,28 @@ void updateValue(int screen, String pair) {
 
 /*
  * Handle application protocol
+ *
+ * Two message shapes share the leading "9:":
+ *   "9:"                         -> page init for the page whose menu key is "9"
+ *   "9:<pageId>:<key>:<value>"   -> config update (the magic update opcode)
+ * Disambiguate by checking whether the remainder of the message contains another colon.
  */
 void handleWSMsg(AsyncWebSocketClient *client, char *data) {
 	String wholeMsg(data);
-	int code = wholeMsg.substring(0, wholeMsg.indexOf(':')).toInt();
+	int firstColon = wholeMsg.indexOf(':');
+	int code = wholeMsg.substring(0, firstColon).toInt();
+	String rest = wholeMsg.substring(firstColon + 1);
 
-	if (code < 9) {
-		if (code < wsHandlers.length()) {
-			if (wsHandlers[code] != NULL) {
-				wsHandlers[code]->handle(client, data);
-			}
-		}
-	} else {
-		String message = wholeMsg.substring(wholeMsg.indexOf(':')+1);
-		int screen = message.substring(0, message.indexOf(':')).toInt();
-		String pair = message.substring(message.indexOf(':')+1);
+	bool isUpdate = (code == 9 && rest.indexOf(':') >= 0);
+
+	if (isUpdate) {
+		int screen = rest.substring(0, rest.indexOf(':')).toInt();
+		String pair = rest.substring(rest.indexOf(':')+1);
 		updateValue(screen, pair);
+	} else {
+		if (code >= 0 && code < wsHandlers.length() && wsHandlers[code] != NULL) {
+			wsHandlers[code]->handle(client, data);
+		}
 	}
 }
 
@@ -997,6 +1038,12 @@ void initFacesMenu() {
 	}
 
 	tfts->fillScreen(MENU_ITEM_BACKGROUND);
+}
+
+String textCallback() {
+	String s = "\"text_enabled\":";
+	s += (IPSClock::getTimeOrDate().value == IPSClock::TEXT) ? "true" : "false";
+	return s;
 }
 
 String wifiCallback() {

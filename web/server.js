@@ -77,6 +77,7 @@ var pages = {
 			{"3": { "url" : "faces.html", "title" : "Files" }},
 			{"7": { "url" : "weather.html", "title" : "Weather" }},
 			{"8": { "url" : "matrix.html", "title" : "Screen Saver" }},
+			{"9": { "url" : "text.html", "title" : "Text" }},
 			{"4": { "url" : "mqtt.html", "title" : "MQTT" }},
 			{"6": { "url" : "network.html", "title" : "Network"}},
 			{"5": { "url" : "info.html", "title" : "Info" }}
@@ -157,6 +158,16 @@ var sendMatrix = function(conn) {
 	conn.send(json);
 }
 
+var sendTextValues = function(conn) {
+	var payload = Object.assign({}, state[9]);
+	payload.text_enabled = (state[1].time_or_date == 4);
+	var json = '{"type":"sv.init.text","value":';
+	json += JSON.stringify(payload);
+	json += '}';
+	console.log(json);
+	conn.send(json);
+}
+
 var state = {
 	"1": {
 		'time_or_date':  1,
@@ -229,6 +240,14 @@ var state = {
 		'matrix_saturation': 200,
 		'matrix_value': 210,
 		'set_icon_matrix': 'You'
+	},
+	"9": {
+		'text_content' : 'HELLO',
+		'text_fixed' : true,
+		'text_interval' : 500,
+		'text_padding' : 3,
+		'text_fg_color' : '#ffffff',
+		'text_bg_color' : '#000000'
 	}
 }
 
@@ -285,42 +304,28 @@ wss.on('connection', function(conn) {
         //log the received message and send it back to the client
         console.log('received: %s', data);
         var message = isBinary ? data : data.toString();
-    	var code = parseInt(message.substring(0, message.indexOf(':')));
+    	var firstColon = message.indexOf(':');
+    	var code = parseInt(message.substring(0, firstColon));
+    	var rest = message.substring(firstColon + 1);
+    	var isUpdate = (code === 9 && rest.indexOf(':') >= 0);
 
-    	switch (code) {
-    	case 0:
-    		sendPages(conn);
-    		break;
-    	case 1:
-    		sendClockValues(conn);
-    		break;
-    	case 2:
-    		sendLEDValues(conn);
-    		break;
-    	case 3:
-    		sendFacesValues(conn);
-    		break;
-    	case 4:
-    		sendMQTTValues(conn);
-    		break;
-    	case 5:
-    		sendInfoValues(conn);
-    		break;
-    	case 6:
-    		sendNetwork(conn);
-    		break;
-    	case 7:
-    		sendWeatherValues(conn);
-    		break;
-    	case 8:
-    		sendMatrix(conn);
-    		break;
-    	case 9:
-    		message = message.substring(message.indexOf(':')+1);
-    		var screen = message.substring(0, message.indexOf(':'));
-    		var pair = message.substring(message.indexOf(':')+1);
+    	if (isUpdate) {
+    		var screen = rest.substring(0, rest.indexOf(':'));
+    		var pair = rest.substring(rest.indexOf(':')+1);
     		updateValue(conn, screen, pair);
-    		break;
+    	} else {
+    		switch (code) {
+    		case 0: sendPages(conn); break;
+    		case 1: sendClockValues(conn); break;
+    		case 2: sendLEDValues(conn); break;
+    		case 3: sendFacesValues(conn); break;
+    		case 4: sendMQTTValues(conn); break;
+    		case 5: sendInfoValues(conn); break;
+    		case 6: sendNetwork(conn); break;
+    		case 7: sendWeatherValues(conn); break;
+    		case 8: sendMatrix(conn); break;
+    		case 9: sendTextValues(conn); break;
+    		}
     	}
     });
 

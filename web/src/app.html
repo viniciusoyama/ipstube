@@ -370,6 +370,19 @@
 			elementBlur(element);
 		}
 
+		function onTextEnabledChange(el) {
+			if (serverSetting) return;
+			var pageId = getPageId($(".ui-page-active").attr("id"));
+			var val = el.checked ? 4 : 0;
+			safeSend('9:' + pageId + ':time_or_date:' + val);
+		}
+
+		function syncTextSlideContainer() {
+			var fixed = $('#text_fixed').prop('checked');
+			var $c = $('#text_slide_container');
+			if (fixed) $c.hide(); else $c.show();
+		}
+
 		function colorChange(element) {
 			element=$(element);
 			var val = getElementValue(element);
@@ -614,11 +627,15 @@
 					case "sv.init.faces":	// Received initialization object
 					case "sv.init.weather":	// Received initialization object
 					case "sv.init.matrix":	// Received initialization object
+					case "sv.init.text":	// Received initialization object
 					case "sv.init.mqtt":	// Received initialization object
 					case "sv.init.network":	// Received initialization object
 					case "sv.init.info":	// Received initialization object
 						console.log(msg.type);
 						updateElements(msg.value);
+						if (msg.type === "sv.init.text") {
+							syncTextSlideContainer();
+						}
 						break;
 
 					case "sv.status":

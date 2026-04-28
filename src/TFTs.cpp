@@ -323,6 +323,30 @@ void TFTs::drawStatus() {
   }
 }
 
+TextAnimation& TFTs::getTextAnimator() {
+  static TextAnimation animator;
+  return animator;
+}
+
+void TFTs::invalidateTextAnimation() {
+  getTextAnimator().invalidate();
+}
+
+void TFTs::animateText() {
+  TextAnimation& animator = getTextAnimator();
+  if (!animator.loop()) {
+    return;
+  }
+
+  claim();
+  uint8_t saved = chip_select.getDigitMap();
+
+  animator.animate(*this);
+
+  chip_select.setDigitMap(saved, true);
+  release();
+}
+
 void TFTs::animateRain() {
 #ifdef SMOOTH_FONT
   DigitalRainAnim animator = getMatrixAnimator();
