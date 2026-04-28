@@ -370,6 +370,19 @@
 			elementBlur(element);
 		}
 
+		function onTextEnabledChange(el) {
+			if (serverSetting) return;
+			var pageId = getPageId($(".ui-page-active").attr("id"));
+			var val = el.checked ? 4 : 0;
+			safeSend('9:' + pageId + ':time_or_date:' + val);
+		}
+
+		function syncTextSlideContainer() {
+			var fixed = $('#text_fixed').prop('checked');
+			var $c = $('#text_slide_container');
+			if (fixed) $c.hide(); else $c.show();
+		}
+
 		function colorChange(element) {
 			element=$(element);
 			var val = getElementValue(element);
@@ -620,6 +633,9 @@
 					case "sv.init.info":	// Received initialization object
 						console.log(msg.type);
 						updateElements(msg.value);
+						if (msg.type === "sv.init.text") {
+							syncTextSlideContainer();
+						}
 						break;
 
 					case "sv.status":

@@ -29,7 +29,7 @@
                     data-wrapper-class="custom-label-flipswitch">
             </div>
 
-            <div id="text_slide_container" style="display: none;">
+            <div id="text_slide_container">
                 <div class="clearFloats"></div>
                 <label for="text_interval">Slide interval (ms)</label>
                 <input onchange="elementChange(this)" type="range" name="text_interval" id="text_interval" min="50" max="3000" step="50" value="500">
@@ -51,12 +51,3 @@
         </form>
     </div>
 </div>
-
-<script>
-function onTextEnabledChange(el) {
-    if (typeof serverSetting !== 'undefined' && serverSetting) return;
-    var pageId = getPageId($(".ui-page-active").attr("id"));
-    var val = el.checked ? 4 : 0;
-    safeSend('9:' + pageId + ':time_or_date:' + val);
-}
-</script>
