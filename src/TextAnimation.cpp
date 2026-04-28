@@ -88,7 +88,10 @@ void TextAnimation::animate(TFTs& tfts) {
             if (tape.length() == 0) {
                 ch = ' ';
             } else {
-                ch = tapeAt(tape, (int32_t)tick - (int32_t)charIdx);
+                // Right-to-left marquee: letters enter from the rightmost panel
+                // and travel left, so the text reads in natural order across panels.
+                int32_t fromRight = (int32_t)(NUM_DIGITS - 1 - charIdx);
+                ch = tapeAt(tape, (int32_t)tick - fromRight);
             }
         }
 
