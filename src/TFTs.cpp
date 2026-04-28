@@ -419,7 +419,15 @@ void TFTs::clearDivergenceDigitCache() {
 
 bool TFTs::buildDivergenceDigitCache(const uint8_t digits[], uint8_t count) {
   clearDivergenceDigitCache();
-  if (count == 0 || count > 5) return false;
+  if (count == 0 || count > 10) return false;
+
+  // Free the 64 KB space.bmp background buffer to make heap room. With a
+  // working digit cache we don't need it: rolling pushes cached digits
+  // directly, and the dot/blank paths fall back to fillSprite(TFT_BLACK).
+  if (divergenceBg != nullptr) {
+    free(divergenceBg);
+    divergenceBg = nullptr;
+  }
 
   const size_t cacheBytes = (size_t)DIV_CACHE_W * (size_t)DIV_CACHE_H * sizeof(uint16_t);
 
@@ -442,12 +450,12 @@ bool TFTs::buildDivergenceDigitCache(const uint8_t digits[], uint8_t count) {
       return false;
     }
 
-    // Downsample 135x240 -> 67x120 nearest-neighbour. Source comes from the
-    // working sprite's RGB565 buffer.
+    // Downsample 135x240 -> 45x80 nearest-neighbour (3x reduction in each
+    // dimension). Source is the working sprite's RGB565 buffer.
     const uint16_t* src = (const uint16_t*) StaticSprite::output_buffer;
     for (int y = 0; y < DIV_CACHE_H; y++) {
       for (int x = 0; x < DIV_CACHE_W; x++) {
-        buf[y * DIV_CACHE_W + x] = src[(y * 2) * TFT_WIDTH + (x * 2)];
+        buf[y * DIV_CACHE_W + x] = src[(y * 3) * TFT_WIDTH + (x * 3)];
       }
     }
 
@@ -472,17 +480,18 @@ bool TFTs::pushCachedDivergenceDigit(uint8_t panel, uint8_t digit) {
 
   chip_select.setDigit(panel);
 
-  // Upsample 67x120 -> 135x240 nearest-neighbour directly into the working
-  // sprite buffer. Per pixel: one indexed read + one indexed write.
+  // Upsample 45x80 -> 135x240 nearest-neighbour directly into the working
+  // sprite buffer (3x in each dimension). Per pixel: one indexed read +
+  // one indexed write.
   uint16_t* dst = (uint16_t*) StaticSprite::output_buffer;
   const uint16_t* src = entry->buf;
   for (int Y = 0; Y < TFT_HEIGHT; Y++) {
-    int cy = Y >> 1;
+    int cy = Y / 3;
     if (cy >= DIV_CACHE_H) cy = DIV_CACHE_H - 1;
     const uint16_t* row = &src[cy * DIV_CACHE_W];
     uint16_t* dstRow = &dst[Y * TFT_WIDTH];
     for (int X = 0; X < TFT_WIDTH; X++) {
-      int cx = X >> 1;
+      int cx = X / 3;
       if (cx >= DIV_CACHE_W) cx = DIV_CACHE_W - 1;
       dstRow[X] = row[cx];
     }
