@@ -1,0 +1,62 @@
+<div data-role="page" id="Text">
+    <div data-role="header" data-position="fixed">
+        <h1>Text</h1>
+        <a href="#mainMenu" data-rel="main-menu-panel" class="ui-btn ui-btn-left ui-btn-icon-notext ui-icon-bars ui-corner-all"></a>
+    </div>
+    <div data-role="content">
+        <form action="/set_text" method="POST" id="text_form">
+            <div class="dispInlineLabel">
+                <label for="text_enabled">Show text instead of clock</label>
+            </div>
+            <div class="dispInline">
+                <input onchange="onTextEnabledChange(this)" type="checkbox"
+                    data-role="flipswitch" name="text_enabled" id="text_enabled"
+                    data-on-text="On" data-off-text="Off"
+                    data-wrapper-class="custom-label-flipswitch">
+            </div>
+            <div class="clearFloats"></div>
+
+            <label for="text_content">Text</label>
+            <input onchange="elementChange(this)" type="text" name="text_content" id="text_content" maxlength="32" value="">
+
+            <div class="dispInlineLabel">
+                <label for="text_fixed">Fixed (first 6 chars)</label>
+            </div>
+            <div class="dispInline">
+                <input onchange="elementChange(this);setVisibility('text_slide_container', this, [false]);" type="checkbox"
+                    data-role="flipswitch" name="text_fixed" id="text_fixed"
+                    data-on-text="Yes" data-off-text="No"
+                    data-wrapper-class="custom-label-flipswitch">
+            </div>
+
+            <div id="text_slide_container" style="display: none;">
+                <div class="clearFloats"></div>
+                <label for="text_interval">Slide interval (ms)</label>
+                <input onchange="elementChange(this)" type="range" name="text_interval" id="text_interval" min="50" max="3000" step="50" value="500">
+
+                <div class="clearFloats"></div>
+                <label for="text_padding">Padding (empty ticks at end)</label>
+                <input onchange="elementChange(this)" type="range" name="text_padding" id="text_padding" min="0" max="20" value="3">
+            </div>
+
+            <div class="clearFloats"></div>
+            <fieldset id="text_colors" data-collapsed="false" data-role="collapsible" data-iconpos="right" data-collapsed-icon="carat-d" data-expanded-icon="carat-u">
+                <legend>Colors</legend>
+                <label for="text_fg_color">Text color</label>
+                <input onchange="elementChange(this)" type="color" name="text_fg_color" id="text_fg_color" value="#ffffff">
+                <div class="clearFloats"></div>
+                <label for="text_bg_color">Background color</label>
+                <input onchange="elementChange(this)" type="color" name="text_bg_color" id="text_bg_color" value="#000000">
+            </fieldset>
+        </form>
+    </div>
+</div>
+
+<script>
+function onTextEnabledChange(el) {
+    if (typeof serverSetting !== 'undefined' && serverSetting) return;
+    var pageId = getPageId($(".ui-page-active").attr("id"));
+    var val = el.checked ? 4 : 0;
+    safeSend('9:' + pageId + ':time_or_date:' + val);
+}
+</script>
