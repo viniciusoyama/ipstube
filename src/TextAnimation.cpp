@@ -2,7 +2,6 @@
 #include "TFTs.h"
 #include "IPSClock.h"
 #include "GLOBAL_DEFINES.h"
-#include <Fonts/GFXFF/FreeSansBold24pt7b.h>
 
 // Reading-order mapping: index 0 is leftmost panel (hours-tens),
 // index 5 is rightmost (seconds-ones). Works for both panel orderings.
@@ -100,8 +99,8 @@ void TextAnimation::animate(TFTs& tfts) {
         if (ch != ' ') {
             sprite.setTextDatum(MC_DATUM);
             sprite.setTextColor(fg565, bg565);
-            sprite.setFreeFont(&FreeSansBold24pt7b);
-            sprite.setTextSize(2);
+            sprite.setTextFont(4);
+            sprite.setTextSize(3);
             char buf[2] = { ch, 0 };
             sprite.drawString(buf, cx, cy);
         }
