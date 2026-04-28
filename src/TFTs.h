@@ -7,6 +7,7 @@
 #include <TFT_eSPI.h>
 #include "ChipSelect.h"
 #include "DigitalRainAnimation.h"
+#include "TextAnimation.h"
 
 #define TFT_PWM_CHANNEL 0
 #define TFT_PWM_FREQ 20000   // PWM frequency for TFT dimming (Hz)
@@ -70,6 +71,8 @@ public:
   StaticSprite& getSprite();
 
   void animateRain();
+  void animateText();
+  void invalidateTextAnimation();
 
   void setImageJustification(image_justification_t value) { imageJustification = value; }
   void setBox(uint16_t w, uint16_t h) { boxWidth = w; boxHeight = h; }
@@ -102,6 +105,7 @@ private:
 #else
   DigitalRainAnimation& getMatrixAnimator();
 #endif
+  TextAnimation& getTextAnimator();
   void drawStatus();
 
   byte showDigits = 0;
