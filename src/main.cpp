@@ -73,6 +73,7 @@ void setWiFiAP(bool on);
 void infoCallback();
 String wifiCallback();
 String clockFacesCallback();
+String textCallback();
 void broadcastUpdate(String msg);
 void broadcastUpdate(const BaseConfigItem& item);
 void setFace(const char *menuLabel);
@@ -690,7 +691,7 @@ WSConfigHandler wsLEDHandler(rootConfig, "leds");
 WSConfigHandler wsFacesHandler(rootConfig, "faces", clockFacesCallback);
 WSConfigHandler wsWeatherHandler(rootConfig, "weather");
 WSConfigHandler wsMatrixHandler(rootConfig, "matrix");
-WSConfigHandler wsTextHandler(rootConfig, "text");
+WSConfigHandler wsTextHandler(rootConfig, "text", textCallback);
 WSConfigHandler wsMqttHandler(rootConfig, "mqtt");
 WSConfigHandler wsNetworkHandler(rootConfig, "network", wifiCallback);
 WSInfoHandler wsInfoHandler(infoCallback);
@@ -1037,6 +1038,12 @@ void initFacesMenu() {
 	}
 
 	tfts->fillScreen(MENU_ITEM_BACKGROUND);
+}
+
+String textCallback() {
+	String s = "\"text_enabled\":";
+	s += (IPSClock::getTimeOrDate().value == IPSClock::TEXT) ? "true" : "false";
+	return s;
 }
 
 String wifiCallback() {
