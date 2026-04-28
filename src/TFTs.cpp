@@ -394,6 +394,24 @@ static uint16_t parseDivergenceColor() {
   return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
 }
 
+void TFTs::ensureDivergenceBackground() {
+  if (divergenceBg != nullptr) return;
+  const size_t bytes = (size_t)TFT_WIDTH * (size_t)TFT_HEIGHT * 2;
+  divergenceBg = (uint8_t*) heap_caps_malloc(bytes, MALLOC_CAP_DMA);
+  if (!divergenceBg) return;  // out of memory; drawDivergenceDigit will fall back to black
+
+  // Load the active clock face's "space" tile into the working sprite, then
+  // snapshot it into our cache buffer.
+  loadedFilename[0] = 0;  // force a real disk read
+  char filename[64];
+  strcpy(filename, "/ips/cache/space.bmp");
+  if (LoadImageIntoBuffer(filename)) {
+    memcpy(divergenceBg, StaticSprite::output_buffer, bytes);
+  } else {
+    memset(divergenceBg, 0, bytes);
+  }
+}
+
 void TFTs::drawDivergenceDigit(uint8_t panel, char ch, bool useFont) {
   if (!enabled) return;
 
@@ -411,15 +429,29 @@ void TFTs::drawDivergenceDigit(uint8_t panel, char ch, bool useFont) {
 
   // Everything else renders into the sprite directly: rolling digits (font),
   // dot, blank.
+  ensureDivergenceBackground();
+
   chip_select.setDigit(panel);
   StaticSprite& sprite = getSprite();
-  sprite.fillSprite(TFT_BLACK);
+  if (divergenceBg != nullptr) {
+    // Reset the working sprite to a fresh copy of space.bmp from the
+    // active clock face, then layer the digit/dot on top.
+    memcpy(StaticSprite::output_buffer, divergenceBg,
+           (size_t)TFT_WIDTH * (size_t)TFT_HEIGHT * 2);
+    // Invalidate the BMP cache key — the buffer now holds space.bmp content
+    // that didn't come through LoadImageIntoBuffer.
+    loadedFilename[0] = 0;
+  } else {
+    sprite.fillSprite(TFT_BLACK);
+  }
 
   if (ch >= '0' && ch <= '9') {
-    // Font-rendered rolling digit. Bigger than text-face font for visibility.
+    // Font-rendered rolling digit. Bigger than text-face font, single-arg
+    // setTextColor so the glyph paints transparently over the space.bmp
+    // background (no black rectangle around the digit).
     const uint16_t fg = parseDivergenceColor();
     sprite.setTextDatum(MC_DATUM);
-    sprite.setTextColor(fg, TFT_BLACK);
+    sprite.setTextColor(fg);
     sprite.setTextFont(6);
     sprite.setTextSize(2);
     char buf[2] = { ch, 0 };

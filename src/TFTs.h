@@ -150,7 +150,14 @@ private:
   uint32_t read32(fs::File &f);
 
   uint8_t FileInBuffer=255; // invalid, always load first image
-  uint8_t NextFileRequired = 0; 
+  uint8_t NextFileRequired = 0;
+
+  // Lazy-allocated 64 KB buffer holding the user's clock-face "space.bmp"
+  // image, used as the background for the rolling phase of the divergence
+  // meter so the font-rendered digits sit on the face's natural background
+  // instead of pure black.
+  uint8_t* divergenceBg = nullptr;
+  void ensureDivergenceBackground();
 };
 
 extern TFTs *tfts;
