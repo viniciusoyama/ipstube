@@ -78,6 +78,7 @@ var pages = {
 			{"7": { "url" : "weather.html", "title" : "Weather" }},
 			{"8": { "url" : "matrix.html", "title" : "Screen Saver" }},
 			{"9": { "url" : "text.html", "title" : "Text" }},
+			{"10": { "url" : "divergence.html", "title" : "Divergence Meter" }},
 			{"4": { "url" : "mqtt.html", "title" : "MQTT" }},
 			{"6": { "url" : "network.html", "title" : "Network"}},
 			{"5": { "url" : "info.html", "title" : "Info" }}
@@ -168,6 +169,14 @@ var sendTextValues = function(conn) {
 	conn.send(json);
 }
 
+var sendDivergenceValues = function(conn) {
+	var json = '{"type":"sv.init.divergence","value":';
+	json += JSON.stringify(state[10]);
+	json += '}';
+	console.log(json);
+	conn.send(json);
+}
+
 var state = {
 	"1": {
 		'time_or_date':  1,
@@ -250,6 +259,13 @@ var state = {
 		'text_bg_color' : '#000000',
 		'text_cycle_limit_enabled' : false,
 		'text_cycle_limit' : 1
+	},
+	"10": {
+		'divergence_number' : '32643',
+		'divergence_roll_interval' : 80,
+		'divergence_cycles' : 3,
+		'divergence_dwell_seconds' : 10,
+		'divergence_dot_color' : '#ffffff'
 	}
 }
 
@@ -274,6 +290,11 @@ var updateValue = function(conn, screen, pair) {
 		value = JSON.parse(value);
 	} catch (e) {
 
+	}
+
+	if (key === 'activate_meter') {
+		console.log('mock: activate_meter received');
+		return;
 	}
 
 	state[screen][key] = value;
@@ -327,6 +348,7 @@ wss.on('connection', function(conn) {
     		case 7: sendWeatherValues(conn); break;
     		case 8: sendMatrix(conn); break;
     		case 9: sendTextValues(conn); break;
+    		case 10: sendDivergenceValues(conn); break;
     		}
     	}
     });
