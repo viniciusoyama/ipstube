@@ -1,0 +1,49 @@
+        <div data-role="page" id="LEDs">
+            <div data-role="header" data-position="fixed">
+                <h1>LEDs</h1>
+				<a href="#mainMenu" data-rel="main-menu-panel" class="ui-btn ui-btn-left ui-btn-icon-notext ui-icon-bars ui-corner-all"></a>
+				<a href="https://github.com/judge2005/EleksTubeIPS/wiki/User-Guide#leds" target="_blank" class="ui-btn ui-btn-right ui-btn-icon-notext ui-icon-info ui-corner-all"></a>
+            </div>
+            <div data-role="content">
+                <form action="/set_leds" method="POST" id="leds_form">
+					<div class="dispInlineLabel">
+						<label for="led_pattern">Backlight Pattern</label>
+					</div>
+					<div class="dispInline">
+						<select onchange="setVisibility('bpm_container', this, ['3','4','5']);setVisibility('hue_container', this, ['2','4','5']);setVisibility('saturation_container', this, ['2','3','4','5']);elementChange(this)"  type="picklist"
+							id="led_pattern" data-mini="true">
+							<option value="0">Dark</option>
+							<option value="2">Constant</option>
+							<option value="3">Rainbow</option>
+							<option value="4">Pulse</option>
+							<option value="5">Breath</option>
+						</select>
+					</div>
+					<div id="bpm_container" style="display: none;">
+						<div class="clearFloats"></div>
+						<label for="breath_per_min">Speed</label>
+						<input onchange="elementChange(this)" type="range" name="breath_per_min" id="breath_per_min" min="1" max="20" value="20">
+					</div>
+					<fieldset id="led_colors" data-collapsed="false" data-role="collapsible" data-iconpos="right" data-collapsed-icon="carat-d" data-expanded-icon="carat-u">
+						<legend>Colors</legend>
+						<div id="hue_container" style="display: none;">
+							<div class="clearFloats"></div>
+							<label for="led_hue">Hue</label>
+							<input data-wrapper-class="hue" onchange="elementChange(this);" type="range" name="led_hue" id="led_hue" min="0" max="255" value="89">
+						</div>
+						<div id="saturation_container" style="display: none;">
+							<div class="clearFloats"></div>
+							<label for="led_saturation">Saturation</label>
+							<input data-wrapper-class="saturation" onchange="elementChange(this)" type="range" name="led_saturation" id="led_saturation" min="0" max="255" value="255">
+						</div>
+						<div class="clearFloats"></div>
+						<label for="led_value">Brightness</label>
+						<input data-wrapper-class="value" onchange="elementChange(this)" type="range" name="led_value" id="led_value" min="0" max="255" value="255">
+						<div class="dispInline">
+							<input data-wrapper-class="spectrum" class="color_picker" maxlength="1" type='text' id="led_color_picker" />
+						</div>
+						</fieldset>
+					<div class="clearFloats"></div>
+			   </form>
+    		</div>
+        </div>

@@ -1,0 +1,14 @@
+{
+    "name": "IPSTube Replacement Firmware",
+    "version": "$version$",
+    "new_install_prompt_erase": true,
+    "builds": [
+      {
+        "chipFamily": "ESP32",
+        "improv": false,
+        "parts": [
+          { "path": "firmware-ipstube-$version$.bin", "offset": 65536 }
+        ]
+      }
+    ]
+  }

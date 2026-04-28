@@ -1,0 +1,14 @@
+{
+    "name": "Si Hai Clock Replacement Firmware",
+    "version": "$version$",
+    "new_install_prompt_erase": true,
+    "builds": [
+      {
+        "chipFamily": "ESP32",
+        "improv": false,
+        "parts": [
+          { "path": "firmware-sihai-$version$.bin", "offset": 65536 }
+        ]
+      }
+    ]
+  }

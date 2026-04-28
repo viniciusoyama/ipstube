@@ -1,0 +1,41 @@
+        <div data-role="page" id="Files">
+            <div data-role="header" data-position="fixed">
+                <h1>Files</h1>
+				<a href="#mainMenu" data-rel="main-menu-panel" class="ui-btn ui-btn-left ui-btn-icon-notext ui-icon-bars ui-corner-all"></a>
+		        <a href="https://github.com/judge2005/EleksTubeIPS/wiki/User-Guide#files" target="_blank" class="ui-btn ui-btn-right ui-btn-icon-notext ui-icon-info ui-corner-all"></a>
+            </div>
+            <div data-role="content">
+                <fieldset data-role="controlgroup" data-type="horizontal" data-mini="true">
+                    <input onchange="elementChange(this)" type="radio" name="file_set" id="face_files_view" value="faces">
+                    <label for="face_files_view">Clock Faces</label>
+                    <input onchange="elementChange(this)" type="radio" name="file_set" id="weather_files_view" value="weather">
+                    <label for="weather_files_view">Weather Icons</label>
+                    <input onchange="elementChange(this)" type="radio" name="file_set" id="slides_files_view" value="slides">
+                    <label for="slides_files_view">Slide Show</label>
+                </fieldset>
+                <ul id="face_files" data-role="listview" data-inset="true" data-split-icon="trash" HideSelection="false">
+                </ul>
+                <div class="clearFloats"></div>
+                Free space: <span id="fs_free">...</span>
+                <a href="#" onclick="$('#upload_face_popup').popup('open');return false;" data-role="button" data-rel="popup" data-position-to="window" data-transition="pop">Upload</a>
+                <div data-role="popup" id="delete_face_popup" class="ui-content" style="max-width:340px; padding-bottom:2em;">
+                    <h3>Delete file?</h3>
+                    <p id="delete_face_text">Some text</p>
+                    <form action="/delete_face" method="DELETE" id="delete_face_form">
+                        <input type="hidden" value="filename" id="delete_face_file">
+                        <input type="button" value="Delete" onclick="deleteFace(); return true;" data-rel="back" data-theme="b" data-icon="check" data-inline="true" data-mini="true">
+                        <a href="#" data-role="button" data-rel="back" data-inline="true" data-mini="true">Cancel</a>
+                    </form>
+                </div>
+                <div data-role="popup" id="upload_face_popup" class="ui-content" style="max-width:340px; padding-bottom:2em;">
+                    <form action="/upload_face" method="POST" id="faces_form">
+                        <div class="dispInlineLabel">
+                            <label for="face_file">Face file</label>
+                            <input type="file" accept="application/gzip" name="face_file" id="face_file" data-clear-btn="true"/>
+                            <input type="button" value="Upload" data-inline="true" data-mini="true" onclick="uploadFace();"/>
+                            <a href="#" data-role="button" data-rel="back" data-inline="true" data-mini="true">Cancel</a>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
