@@ -66,8 +66,7 @@ public:
     static StringConfigItem& getDivergenceNumber()    { static StringConfigItem divergence_number("divergence_number", 5, "00000"); return divergence_number; }
     static IntConfigItem& getDivergenceRollInterval() { static IntConfigItem divergence_roll_interval("divergence_roll_interval", 80); return divergence_roll_interval; }
     static ByteConfigItem& getDivergenceCycles()      { static ByteConfigItem divergence_cycles("divergence_cycles", 3); return divergence_cycles; }
-    static IntConfigItem& getDivergenceDwellSeconds() { static IntConfigItem divergence_dwell_seconds("divergence_dwell_seconds", 10); return divergence_dwell_seconds; }
-    static StringConfigItem& getDivergenceDotColor() { static StringConfigItem divergence_dot_color("divergence_dot_color", 7, "#ffffff"); return divergence_dot_color; }
+    static ByteConfigItem& getDivergenceDwellSeconds() { static ByteConfigItem divergence_dwell_seconds("divergence_dwell_seconds", 10); return divergence_dwell_seconds; }
 
     void init();
     void loop();

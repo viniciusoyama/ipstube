@@ -264,8 +264,7 @@ var state = {
 		'divergence_number' : '32643',
 		'divergence_roll_interval' : 80,
 		'divergence_cycles' : 3,
-		'divergence_dwell_seconds' : 10,
-		'divergence_dot_color' : '#ffffff'
+		'divergence_dwell_seconds' : 10
 	}
 }
 

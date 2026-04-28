@@ -32,10 +32,10 @@ private:
 
     // Per-panel rolling state. Panels 0..4 (reading order) take the 5 input
     // digits; panel 5 stays blank.
-    uint8_t targetDigit[NUM_DIGITS];   // 0..9; index 5 unused
-    uint16_t panelTicks[NUM_DIGITS];   // ticks consumed by panel; once it
+    uint8_t targetDigit[5];            // 0..9; only 5 active panels
+    uint8_t panelTicks[5];             // ticks consumed by panel; once it
                                        // reaches N*10 + targetDigit the panel
-                                       // is settled.
+                                       // is settled. Caps at 255, so cycles<=24.
 
     uint32_t dwellStartMs = 0;
 };

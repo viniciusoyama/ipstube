@@ -3,7 +3,7 @@
 #include "IPSClock.h"
 
 DivergenceAnimation::DivergenceAnimation() {
-    for (uint8_t i = 0; i < NUM_DIGITS; i++) {
+    for (uint8_t i = 0; i < 5; i++) {
         targetDigit[i] = 0;
         panelTicks[i] = 0;
     }
@@ -21,8 +21,6 @@ void DivergenceAnimation::restart() {
         targetDigit[i] = (uint8_t)(padded[i] - '0');
         panelTicks[i] = 0;
     }
-    targetDigit[5] = 0;
-    panelTicks[5] = 0;
 
     phase = ROLLING;
     finished = false;
@@ -59,10 +57,11 @@ void DivergenceAnimation::animate(TFTs& tfts) {
     if (phase != ROLLING) return;
 
     uint8_t cycles = IPSClock::getDivergenceCycles().value;
+    if (cycles > 24) cycles = 24;  // panelTicks is uint8_t; clamp so 24*10+9 fits
 
     bool allSettled = true;
     for (uint8_t i = 0; i < 5; i++) {
-        uint16_t totalTicks = (uint16_t)cycles * 10 + targetDigit[i];
+        uint8_t totalTicks = cycles * 10 + targetDigit[i];
         if (panelTicks[i] < totalTicks) {
             allSettled = false;
         }
@@ -75,7 +74,7 @@ void DivergenceAnimation::animate(TFTs& tfts) {
         if (i == 5) {
             digitChar = ' ';
         } else {
-            uint16_t totalTicks = (uint16_t)cycles * 10 + targetDigit[i];
+            uint8_t totalTicks = cycles * 10 + targetDigit[i];
             uint8_t shown = (panelTicks[i] >= totalTicks)
                 ? targetDigit[i]
                 : (uint8_t)(panelTicks[i] % 10);
@@ -87,7 +86,7 @@ void DivergenceAnimation::animate(TFTs& tfts) {
     }
 
     for (uint8_t i = 0; i < 5; i++) {
-        uint16_t totalTicks = (uint16_t)cycles * 10 + targetDigit[i];
+        uint8_t totalTicks = cycles * 10 + targetDigit[i];
         if (panelTicks[i] < totalTicks) panelTicks[i]++;
     }
 

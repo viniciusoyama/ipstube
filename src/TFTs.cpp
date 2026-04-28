@@ -383,16 +383,6 @@ void TFTs::animateDivergence() {
   release();
 }
 
-// Parse "#rrggbb" -> RGB565. Falls back to white on malformed input.
-static uint16_t parseHexColor565(const String& s) {
-  if (s.length() != 7 || s.charAt(0) != '#') return 0xFFFF;
-  long v = strtol(s.c_str() + 1, nullptr, 16);
-  uint8_t r = (v >> 16) & 0xFF;
-  uint8_t g = (v >> 8) & 0xFF;
-  uint8_t b = v & 0xFF;
-  return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
-}
-
 void TFTs::drawDivergenceDigit(uint8_t panel, char digitChar, bool drawDot) {
   if (!enabled) return;
 
@@ -416,7 +406,8 @@ void TFTs::drawDivergenceDigit(uint8_t panel, char digitChar, bool drawDot) {
   TFT_eSprite& sprite = drawImage(panel);
 
   if (drawDot) {
-    uint16_t dotColor = parseHexColor565(IPSClock::getDivergenceDotColor());
+    // Hardcoded dot color: RGB(255, 115, 0) -> RGB565 0xFB80.
+    const uint16_t dotColor = ((255 & 0xF8) << 8) | ((115 & 0xFC) << 3) | (0 >> 3);
     int16_t r = max((int16_t)6, (int16_t)(sprite.height() / 30));
     int16_t x = sprite.width() - r - 4;
     int16_t y = sprite.height() - r - 4;
