@@ -792,22 +792,28 @@ void updateValue(int screen, String pair) {
 
 /*
  * Handle application protocol
+ *
+ * Two message shapes share the leading "9:":
+ *   "9:"                         -> page init for the page whose menu key is "9"
+ *   "9:<pageId>:<key>:<value>"   -> config update (the magic update opcode)
+ * Disambiguate by checking whether the remainder of the message contains another colon.
  */
 void handleWSMsg(AsyncWebSocketClient *client, char *data) {
 	String wholeMsg(data);
-	int code = wholeMsg.substring(0, wholeMsg.indexOf(':')).toInt();
+	int firstColon = wholeMsg.indexOf(':');
+	int code = wholeMsg.substring(0, firstColon).toInt();
+	String rest = wholeMsg.substring(firstColon + 1);
 
-	if (code < 9) {
-		if (code < wsHandlers.length()) {
-			if (wsHandlers[code] != NULL) {
-				wsHandlers[code]->handle(client, data);
-			}
-		}
-	} else {
-		String message = wholeMsg.substring(wholeMsg.indexOf(':')+1);
-		int screen = message.substring(0, message.indexOf(':')).toInt();
-		String pair = message.substring(message.indexOf(':')+1);
+	bool isUpdate = (code == 9 && rest.indexOf(':') >= 0);
+
+	if (isUpdate) {
+		int screen = rest.substring(0, rest.indexOf(':')).toInt();
+		String pair = rest.substring(rest.indexOf(':')+1);
 		updateValue(screen, pair);
+	} else {
+		if (code >= 0 && code < wsHandlers.length() && wsHandlers[code] != NULL) {
+			wsHandlers[code]->handle(client, data);
+		}
 	}
 }
 
