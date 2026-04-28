@@ -427,28 +427,34 @@ void TFTs::drawDivergenceDigit(uint8_t panel, char ch, bool useFont) {
     return;
   }
 
-  // Everything else renders into the sprite directly: rolling digits (font),
-  // dot, blank.
-  ensureDivergenceBackground();
+  // Dot panel: use /ips/cache/dot.bmp directly if present. No background
+  // overlay needed since the BMP fills the whole panel.
+  if (ch == '.') {
+    chip_select.setDigit(panel);
+    loadedFilename[0] = 0;
+    if (LoadImageIntoBuffer((char*)"/ips/cache/dot.bmp")) {
+      getSprite().pushSprite(0, 0);
+      return;
+    }
+    // Fall through to the bg + hand-drawn-circle fallback below.
+  }
 
+  // Rolling digit / blank / dot fallback: prepare bg in the working sprite,
+  // overlay if needed, push.
+  ensureDivergenceBackground();
   chip_select.setDigit(panel);
   StaticSprite& sprite = getSprite();
+  const size_t bgBytes = (size_t)TFT_WIDTH * (size_t)TFT_HEIGHT * 2;
   if (divergenceBg != nullptr) {
-    // Reset the working sprite to a fresh copy of space.bmp from the
-    // active clock face, then layer the digit/dot on top.
-    memcpy(StaticSprite::output_buffer, divergenceBg,
-           (size_t)TFT_WIDTH * (size_t)TFT_HEIGHT * 2);
-    // Invalidate the BMP cache key — the buffer now holds space.bmp content
-    // that didn't come through LoadImageIntoBuffer.
+    memcpy(StaticSprite::output_buffer, divergenceBg, bgBytes);
     loadedFilename[0] = 0;
   } else {
     sprite.fillSprite(TFT_BLACK);
   }
 
   if (ch >= '0' && ch <= '9') {
-    // Font-rendered rolling digit. Bigger than text-face font, single-arg
-    // setTextColor so the glyph paints transparently over the space.bmp
-    // background (no black rectangle around the digit).
+    // Font-rendered rolling digit. Single-arg setTextColor so the glyph
+    // paints transparently over the bg (no black rectangle around the digit).
     const uint16_t fg = parseDivergenceColor();
     sprite.setTextDatum(MC_DATUM);
     sprite.setTextColor(fg);
@@ -459,20 +465,7 @@ void TFTs::drawDivergenceDigit(uint8_t panel, char ch, bool useFont) {
     sprite.setTextSize(1);
     sprite.setTextDatum(TL_DATUM);
   } else if (ch == '.') {
-    // Try the active clock face's dot.bmp first; if the face provides one,
-    // it wins (matches whatever style the user picked). Otherwise we already
-    // have the cached space.bmp / black background painted, and fall back to
-    // a hand-drawn dot in the configured color.
-    sprite.pushSprite(0, 0);  // commit the background we already prepared
-    loadedFilename[0] = 0;
-    if (LoadImageIntoBuffer((char*)"/ips/cache/dot.bmp")) {
-      sprite.pushSprite(0, 0);
-      // Restore sprite text state on the way out.
-      sprite.setTextSize(1);
-      sprite.setTextDatum(TL_DATUM);
-      return;
-    }
-    // Fallback: small filled circle bottom-right of the bg we already pushed.
+    // dot.bmp wasn't available: hand-drawn fallback in the configured color.
     const uint16_t dotColor = parseDivergenceColor();
     int16_t r = sprite.width() / 12;
     int16_t margin = r + 8;
