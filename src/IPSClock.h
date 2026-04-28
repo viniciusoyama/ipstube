@@ -59,6 +59,8 @@ public:
     static ByteConfigItem& getTextPadding()      { static ByteConfigItem text_padding("text_padding", 3); return text_padding; }
     static StringConfigItem& getTextFgColor()    { static StringConfigItem text_fg_color("text_fg_color", 7, "#ffffff"); return text_fg_color; }
     static StringConfigItem& getTextBgColor()    { static StringConfigItem text_bg_color("text_bg_color", 7, "#000000"); return text_bg_color; }
+    static BooleanConfigItem& getTextCycleLimitEnabled() { static BooleanConfigItem text_cycle_limit_enabled("text_cycle_limit_enabled", false); return text_cycle_limit_enabled; }
+    static IntConfigItem& getTextCycleLimit()    { static IntConfigItem text_cycle_limit("text_cycle_limit", 1); return text_cycle_limit; }
 
     void init();
     void loop();

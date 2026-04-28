@@ -237,6 +237,8 @@ IRAMPtrArray<BaseConfigItem*> textSet {
     &IPSClock::getTextPadding(),
     &IPSClock::getTextFgColor(),
     &IPSClock::getTextBgColor(),
+    &IPSClock::getTextCycleLimitEnabled(),
+    &IPSClock::getTextCycleLimit(),
     0
 };
 CompositeConfigItem textConfig("text", 0, textSet);
