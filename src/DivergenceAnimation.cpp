@@ -118,10 +118,12 @@ void DivergenceAnimation::animate(TFTs& tfts) {
         }
     }
 
-    if (globalTick < 255) globalTick++;
-
+    // The frame *at* globalTick == maxDoneTick is when the last-settling
+    // panel renders its BMP. Only after that frame should we transition.
     if (globalTick >= maxDoneTick) {
         phase = DWELLING;
         dwellStartMs = millis();
+    } else if (globalTick < 255) {
+        globalTick++;
     }
 }
