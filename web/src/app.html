@@ -377,6 +377,12 @@
 			safeSend('9:' + pageId + ':time_or_date:' + val);
 		}
 
+		function onActivateMeter() {
+			if (serverSetting) return;
+			var pageId = getPageId($(".ui-page-active").attr("id"));
+			safeSend('9:' + pageId + ':activate_meter:true');
+		}
+
 		function syncTextSlideContainer() {
 			var fixed = $('#text_fixed').prop('checked');
 			var $c = $('#text_slide_container');
@@ -632,6 +638,7 @@
 					case "sv.init.weather":	// Received initialization object
 					case "sv.init.matrix":	// Received initialization object
 					case "sv.init.text":	// Received initialization object
+					case "sv.init.divergence":	// Received initialization object
 					case "sv.init.mqtt":	// Received initialization object
 					case "sv.init.network":	// Received initialization object
 					case "sv.init.info":	// Received initialization object
