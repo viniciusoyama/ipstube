@@ -237,6 +237,8 @@ IRAMPtrArray<BaseConfigItem*> textSet {
     &IPSClock::getTextPadding(),
     &IPSClock::getTextFgColor(),
     &IPSClock::getTextBgColor(),
+    &IPSClock::getTextCycleLimitEnabled(),
+    &IPSClock::getTextCycleLimit(),
     0
 };
 CompositeConfigItem textConfig("text", 0, textSet);
@@ -344,6 +346,13 @@ void onDisplayChanged(ConfigItem<int> &item) {
 	tfts->invalidateAllDigits();
 
 	weather->redraw();
+
+	if (IPSClock::getTimeOrDate().value == IPSClock::TEXT) {
+		// Reset tick so activation begins with a clean lead-in (all blank)
+		// frame instead of resuming mid-marquee.
+		tfts->invalidateTextAnimation();
+		tfts->resetTextCycleCount();
+	}
 }
 
 void onBrightnessChanged(ConfigItem<byte> &item) {
@@ -358,6 +367,7 @@ void onWeatherColorChanged(ConfigItem<T> &item) {
 template <class T>
 void onTextConfigChanged(ConfigItem<T> &item) {
 	tfts->invalidateTextAnimation();
+	tfts->resetTextCycleCount();
 }
 
 bool menuDrawn = false;
@@ -499,6 +509,8 @@ void clockTaskFn(void *pArg) {
 	IPSClock::getTextPadding().setCallback(onTextConfigChanged);
 	IPSClock::getTextFgColor().setCallback(onTextConfigChanged);
 	IPSClock::getTextBgColor().setCallback(onTextConfigChanged);
+	IPSClock::getTextCycleLimitEnabled().setCallback(onTextConfigChanged);
+	IPSClock::getTextCycleLimit().setCallback(onTextConfigChanged);
 
 	*oldSlidesSet = slidesSet->value;
 
@@ -584,6 +596,12 @@ void clockTaskFn(void *pArg) {
 				case IPSClock::TEXT:
 					if (ipsClock->clockOn() || (ipsClock->getDimming() == IPSClock::DIM)) {
 						tfts->animateText();
+						if (tfts->isTextAnimationFinished()) {
+							IPSClock::getTimeOrDate() = IPSClock::TIME;
+							IPSClock::getTimeOrDate().put();
+							broadcastUpdate(IPSClock::getTimeOrDate());
+							IPSClock::getTimeOrDate().notify();
+						}
 					} else {
 						tfts->disableAllDisplays();
 					}

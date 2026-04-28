@@ -53,12 +53,14 @@ public:
     static ByteConfigItem& getBrightnessConfig() { static ByteConfigItem brightness_config("brightness_config", 255); return brightness_config; }
     static StringConfigItem& getCustomData() { static StringConfigItem custom_data("custom_data", 10, ""); return custom_data; }	// Custom data for MQTT
 
-    static StringConfigItem& getTextContent()    { static StringConfigItem text_content("text_content", 32, ""); return text_content; }
+    static StringConfigItem& getTextContent()    { static StringConfigItem text_content("text_content", 24, ""); return text_content; }
     static BooleanConfigItem& getTextFixed()     { static BooleanConfigItem text_fixed("text_fixed", true); return text_fixed; }
     static IntConfigItem& getTextInterval()      { static IntConfigItem text_interval("text_interval", 500); return text_interval; }
     static ByteConfigItem& getTextPadding()      { static ByteConfigItem text_padding("text_padding", 3); return text_padding; }
     static StringConfigItem& getTextFgColor()    { static StringConfigItem text_fg_color("text_fg_color", 7, "#ffffff"); return text_fg_color; }
     static StringConfigItem& getTextBgColor()    { static StringConfigItem text_bg_color("text_bg_color", 7, "#000000"); return text_bg_color; }
+    static BooleanConfigItem& getTextCycleLimitEnabled() { static BooleanConfigItem text_cycle_limit_enabled("text_cycle_limit_enabled", false); return text_cycle_limit_enabled; }
+    static IntConfigItem& getTextCycleLimit()    { static IntConfigItem text_cycle_limit("text_cycle_limit", 1); return text_cycle_limit; }
 
     void init();
     void loop();

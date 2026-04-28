@@ -20,29 +20,24 @@ uint16_t TextAnimation::parseHexColor(const String& s) {
     return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
 }
 
-char TextAnimation::tapeAt(const String& tape, int32_t idx) const {
-    int32_t L = (int32_t)tape.length();
-    if (L == 0) return ' ';
-    int32_t m = ((idx % L) + L) % L;
-    return tape.charAt(m);
+void TextAnimation::invalidate() {
+    dirty = true;
+    tick = 0;
+    prevLeftmostIdx = -1;
 }
 
-void TextAnimation::invalidate() { dirty = true; }
+void TextAnimation::resetCycleCount() {
+    if (IPSClock::getTextCycleLimitEnabled() && IPSClock::getTextCycleLimit().value > 0) {
+        cyclesRemaining = IPSClock::getTextCycleLimit().value;
+    } else {
+        cyclesRemaining = -1;
+    }
+    finished = false;
+    prevLeftmostIdx = -1;
+}
 
 bool TextAnimation::loop() {
-    String text = IPSClock::getTextContent();
     bool fixed = IPSClock::getTextFixed();
-    String fg = IPSClock::getTextFgColor();
-    String bg = IPSClock::getTextBgColor();
-
-    if (text != lastText || fixed != lastFixed || fg != lastFg || bg != lastBg) {
-        lastText = text;
-        lastFixed = fixed;
-        lastFg = fg;
-        lastBg = bg;
-        dirty = true;
-        tick = 0;
-    }
 
     if (fixed) {
         if (dirty) {
@@ -71,28 +66,62 @@ void TextAnimation::animate(TFTs& tfts) {
     uint16_t fg565 = parseHexColor(IPSClock::getTextFgColor());
     uint16_t bg565 = parseHexColor(IPSClock::getTextBgColor());
 
-    String tape = text;
-    if (!fixed) {
-        for (uint8_t k = 0; k < padding; k++) tape += ' ';
+    int32_t textLen = (int32_t)text.length();
+    int32_t tapeLen = textLen + (int32_t)padding;
+
+    // Marquee model: the visible window slides over an infinite virtual strip
+    //   (NUM_DIGITS leading blanks) + tape + tape + tape + ...
+    // where tape = text + padding spaces.
+    //
+    // Panel charIdx (0=leftmost, 5=rightmost) at tick T shows strip[T + charIdx].
+    // The leading blanks make activation start clean: at T=0 all panels are
+    // blank, at T=1 the rightmost panel just received the first text char,
+    // etc. After T grows past the leading prefix the marquee wraps the tape
+    // continuously and subsequent text instances may overlap the previous on
+    // screen (that's the user's intent — controlled via padding).
+    auto stripAt = [&](int32_t i) -> char {
+        if (i < (int32_t)NUM_DIGITS) return ' ';        // leading lead-in
+        if (textLen == 0 || tapeLen == 0) return ' ';
+        int32_t tapeIdx = (((i - (int32_t)NUM_DIGITS) % tapeLen) + tapeLen) % tapeLen;
+        if (tapeIdx < textLen) return text.charAt(tapeIdx);
+        return ' ';                                     // padding region
+    };
+
+    // Returns the tape position for the panel at charIdx, or -1 if the panel
+    // is currently in the lead-in or in the padding region.
+    auto stripPosAt = [&](int32_t charIdx) -> int32_t {
+        int32_t i = (int32_t)tick + charIdx;
+        if (i < (int32_t)NUM_DIGITS) return -1;
+        if (tapeLen <= 0) return -1;
+        int32_t tapeIdx = (((i - (int32_t)NUM_DIGITS) % tapeLen) + tapeLen) % tapeLen;
+        return (tapeIdx < textLen) ? tapeIdx : -1;
+    };
+
+    // Cycle counting (slide mode only). A cycle completes when the leftmost
+    // panel transitions from showing the last text character (position
+    // textLen - 1) to showing anything else. We compare positions, not chars,
+    // so repeated characters in the text don't cause false counts.
+    int32_t currLeftmostStripPos = (!fixed) ? stripPosAt(0) : -1;
+    if (!fixed && textLen > 0 && cyclesRemaining > 0) {
+        if (prevLeftmostIdx == textLen - 1 && currLeftmostStripPos != textLen - 1) {
+            cyclesRemaining--;
+            if (cyclesRemaining == 0) {
+                finished = true;
+            }
+        }
     }
+    prevLeftmostIdx = currLeftmostStripPos;
 
     StaticSprite& sprite = tfts.getSprite();
     int16_t cx = sprite.width() / 2;
     int16_t cy = sprite.height() / 2;
 
     for (uint8_t charIdx = 0; charIdx < NUM_DIGITS; charIdx++) {
-        char ch;
+        char ch = ' ';
         if (fixed) {
-            ch = (charIdx < text.length()) ? text.charAt(charIdx) : ' ';
+            if (charIdx < (uint8_t)textLen) ch = text.charAt(charIdx);
         } else {
-            if (tape.length() == 0) {
-                ch = ' ';
-            } else {
-                // Right-to-left marquee: letters enter from the rightmost panel
-                // and travel left, so the text reads in natural order across panels.
-                int32_t fromRight = (int32_t)(NUM_DIGITS - 1 - charIdx);
-                ch = tapeAt(tape, (int32_t)tick - fromRight);
-            }
+            ch = stripAt((int32_t)tick + (int32_t)charIdx);
         }
 
         uint8_t panel = kLeftToRightPanel[charIdx];
@@ -109,4 +138,9 @@ void TextAnimation::animate(TFTs& tfts) {
         }
         sprite.pushSprite(0, 0);
     }
+
+    // Restore sprite state so other faces (weather, status, meter) don't inherit
+    // our font size and datum.
+    sprite.setTextSize(1);
+    sprite.setTextDatum(TL_DATUM);
 }

@@ -73,6 +73,8 @@ public:
   void animateRain();
   void animateText();
   void invalidateTextAnimation();
+  void resetTextCycleCount();
+  bool isTextAnimationFinished();
 
   void setImageJustification(image_justification_t value) { imageJustification = value; }
   void setBox(uint16_t w, uint16_t h) { boxWidth = w; boxHeight = h; }

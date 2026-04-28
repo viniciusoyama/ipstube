@@ -17,7 +17,7 @@
             <div class="clearFloats"></div>
 
             <label for="text_content">Text</label>
-            <input onchange="elementChange(this)" type="text" name="text_content" id="text_content" maxlength="32" value="">
+            <input onchange="elementChange(this)" type="text" name="text_content" id="text_content" maxlength="24" value="">
 
             <div class="dispInlineLabel">
                 <label for="text_fixed">Fixed (first 6 chars)</label>
@@ -37,6 +37,22 @@
                 <div class="clearFloats"></div>
                 <label for="text_padding">Padding (empty ticks at end)</label>
                 <input onchange="elementChange(this)" type="range" name="text_padding" id="text_padding" min="0" max="20" value="3">
+
+                <div class="clearFloats"></div>
+                <div class="dispInlineLabel">
+                    <label for="text_cycle_limit_enabled">Limit cycles</label>
+                </div>
+                <div class="dispInline">
+                    <input onchange="elementChange(this);setVisibility('text_cycle_limit_container', this, [true]);" type="checkbox"
+                        data-role="flipswitch" name="text_cycle_limit_enabled" id="text_cycle_limit_enabled"
+                        data-on-text="Yes" data-off-text="No"
+                        data-wrapper-class="custom-label-flipswitch">
+                </div>
+                <div id="text_cycle_limit_container">
+                    <div class="clearFloats"></div>
+                    <label for="text_cycle_limit">Number of cycles before returning to clock</label>
+                    <input onchange="elementChange(this)" type="number" name="text_cycle_limit" id="text_cycle_limit" min="1" value="1">
+                </div>
             </div>
 
             <div class="clearFloats"></div>
