@@ -16,6 +16,18 @@ DivergenceAnimation::DivergenceAnimation() {
     }
 }
 
+uint8_t DivergenceAnimation::collectUniqueTargets(uint8_t out[5]) const {
+    uint8_t count = 0;
+    for (uint8_t i = 0; i < 5; i++) {
+        bool seen = false;
+        for (uint8_t j = 0; j < count; j++) {
+            if (out[j] == targetDigit[i]) { seen = true; break; }
+        }
+        if (!seen) out[count++] = targetDigit[i];
+    }
+    return count;
+}
+
 void DivergenceAnimation::restart() {
     String number = IPSClock::getDivergenceNumber();
     char padded[6] = { '0', '0', '0', '0', '0', 0 };
@@ -27,14 +39,28 @@ void DivergenceAnimation::restart() {
     uint8_t cycles = IPSClock::getDivergenceCycles().value;
     if (cycles > 24) cycles = 24;
 
-    maxDoneTick = 0;
+    // Parse target digits first (used for the unique-set / cache build).
     for (uint8_t i = 0; i < 5; i++) {
         targetDigit[i] = (uint8_t)(padded[i] - '0');
-        startOffset[i] = (uint8_t)random(10);
         digitSettled[i] = false;
-        // Earliest tick at which (startOffset + tick) % 10 == target
-        uint8_t toTarget = (uint8_t)(((int)targetDigit[i] - (int)startOffset[i] + 10) % 10);
-        uint8_t doneTick = (uint8_t)(cycles * 10 + toTarget);
+    }
+
+    // Try to populate the half-resolution BMP cache for the unique target
+    // digits. If it succeeds, rolling will use scaled clock-face images;
+    // otherwise we fall back to font rendering.
+    uint8_t unique[5];
+    uint8_t uniqueCount = collectUniqueTargets(unique);
+    extern TFTs* tfts;
+    useCachedDigits = tfts->buildDivergenceDigitCache(unique, uniqueCount);
+
+    // Per-panel random offset into the 5-cycle, plus its done-tick.
+    maxDoneTick = 0;
+    for (uint8_t i = 0; i < 5; i++) {
+        startOffset[i] = (uint8_t)random(5);
+        // Earliest tick at which (startOffset + tick) % 5 == i, i.e. the
+        // panel sees its own slot in the cycle and shows targetDigit[i].
+        uint8_t toTarget = (uint8_t)(((int)i - (int)startOffset[i] + 5) % 5);
+        uint8_t doneTick = (uint8_t)(cycles * 5 + toTarget);
         if (doneTick > maxDoneTick) maxDoneTick = doneTick;
     }
 
@@ -94,27 +120,34 @@ void DivergenceAnimation::animate(TFTs& tfts) {
     }
 
     // Per-frame: push only the digit panels that need it.
-    //   - Rolling: render with font (fast) every frame.
-    //   - Just-settled this frame: render with the BMP from the active clock
-    //     face (one-time).
-    //   - Already-settled: skip — no SPI work, leaves the previous BMP push
-    //     intact on that panel.
+    //   - Rolling: cached BMP if available (cycles through the 5 target
+    //     digits), otherwise font fallback.
+    //   - Just-settled this frame: render with the full-quality BMP from the
+    //     active clock face (one-time).
+    //   - Already-settled: skip — no SPI work.
     static const uint8_t digitCharIdx[5] = { 0, 2, 3, 4, 5 };
     for (uint8_t d = 0; d < 5; d++) {
         if (digitSettled[d]) continue;
 
-        uint8_t toTarget = (uint8_t)(((int)targetDigit[d] - (int)startOffset[d] + 10) % 10);
-        uint8_t doneTick = (uint8_t)(cycles * 10 + toTarget);
+        uint8_t toTarget = (uint8_t)(((int)d - (int)startOffset[d] + 5) % 5);
+        uint8_t doneTick = (uint8_t)(cycles * 5 + toTarget);
         uint8_t physicalPanel = kLeftToRightPanel[digitCharIdx[d]];
 
         if (globalTick >= doneTick) {
-            // Just settled — switch to clock-face BMP for the final look.
+            // Just settled — switch to full-quality BMP for the final look.
             tfts.drawDivergenceDigit(physicalPanel, (char)('0' + targetDigit[d]), false);
             digitSettled[d] = true;
         } else {
-            // Still rolling — fast font render.
-            uint8_t shown = (uint8_t)((startOffset[d] + globalTick) % 10);
-            tfts.drawDivergenceDigit(physicalPanel, (char)('0' + shown), true);
+            // Rolling — cycle through the 5 target digits.
+            uint8_t cycleIdx = (uint8_t)((startOffset[d] + globalTick) % 5);
+            uint8_t shown = targetDigit[cycleIdx];
+            bool drewCached = false;
+            if (useCachedDigits) {
+                drewCached = tfts.pushCachedDivergenceDigit(physicalPanel, shown);
+            }
+            if (!drewCached) {
+                tfts.drawDivergenceDigit(physicalPanel, (char)('0' + shown), true);
+            }
         }
     }
 

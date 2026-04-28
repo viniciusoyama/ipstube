@@ -412,6 +412,87 @@ void TFTs::ensureDivergenceBackground() {
   }
 }
 
+void TFTs::clearDivergenceDigitCache() {
+  for (uint8_t i = 0; i < divergenceCacheCount; i++) {
+    if (divergenceCache[i].buf) free(divergenceCache[i].buf);
+    divergenceCache[i].buf = nullptr;
+  }
+  divergenceCacheCount = 0;
+}
+
+bool TFTs::buildDivergenceDigitCache(const uint8_t digits[], uint8_t count) {
+  clearDivergenceDigitCache();
+  if (count == 0 || count > 5) return false;
+
+  const size_t cacheBytes = (size_t)DIV_CACHE_W * (size_t)DIV_CACHE_H * sizeof(uint16_t);
+
+  for (uint8_t i = 0; i < count; i++) {
+    uint16_t* buf = (uint16_t*) malloc(cacheBytes);
+    if (!buf) {
+      clearDivergenceDigitCache();
+      return false;
+    }
+
+    char filename[24];
+    snprintf(filename, sizeof(filename), "/ips/cache/%u.bmp", (unsigned)digits[i]);
+    loadedFilename[0] = 0;
+    if (!LoadImageIntoBuffer(filename)) {
+      free(buf);
+      clearDivergenceDigitCache();
+      return false;
+    }
+
+    // Downsample 135x240 -> 67x120 nearest-neighbour. Source comes from the
+    // working sprite's RGB565 buffer.
+    const uint16_t* src = (const uint16_t*) StaticSprite::output_buffer;
+    for (int y = 0; y < DIV_CACHE_H; y++) {
+      for (int x = 0; x < DIV_CACHE_W; x++) {
+        buf[y * DIV_CACHE_W + x] = src[(y * 2) * TFT_WIDTH + (x * 2)];
+      }
+    }
+
+    divergenceCache[i].digit = digits[i];
+    divergenceCache[i].buf = buf;
+    divergenceCacheCount++;
+  }
+  return true;
+}
+
+bool TFTs::pushCachedDivergenceDigit(uint8_t panel, uint8_t digit) {
+  if (!enabled) return false;
+
+  DivDigitCache* entry = nullptr;
+  for (uint8_t i = 0; i < divergenceCacheCount; i++) {
+    if (divergenceCache[i].digit == digit) {
+      entry = &divergenceCache[i];
+      break;
+    }
+  }
+  if (!entry || !entry->buf) return false;
+
+  chip_select.setDigit(panel);
+
+  // Upsample 67x120 -> 135x240 nearest-neighbour directly into the working
+  // sprite buffer. Per pixel: one indexed read + one indexed write.
+  uint16_t* dst = (uint16_t*) StaticSprite::output_buffer;
+  const uint16_t* src = entry->buf;
+  for (int Y = 0; Y < TFT_HEIGHT; Y++) {
+    int cy = Y >> 1;
+    if (cy >= DIV_CACHE_H) cy = DIV_CACHE_H - 1;
+    const uint16_t* row = &src[cy * DIV_CACHE_W];
+    uint16_t* dstRow = &dst[Y * TFT_WIDTH];
+    for (int X = 0; X < TFT_WIDTH; X++) {
+      int cx = X >> 1;
+      if (cx >= DIV_CACHE_W) cx = DIV_CACHE_W - 1;
+      dstRow[X] = row[cx];
+    }
+  }
+
+  loadedFilename[0] = 0;  // sprite buffer no longer matches any cached BMP
+  getSprite().pushSprite(0, 0);
+  return true;
+}
+
 void TFTs::drawDivergenceDigit(uint8_t panel, char ch, bool useFont) {
   if (!enabled) return;
 

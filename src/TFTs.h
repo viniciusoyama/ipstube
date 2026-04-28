@@ -81,11 +81,23 @@ public:
   void restartDivergenceAnimation();
   bool isDivergenceAnimationFinished();
   // Renders a single panel for the divergence meter.
-  //   ch '0'..'9', useFont=true  -> font-rendered digit (fast, used during rolling)
+  //   ch '0'..'9', useFont=true  -> font-rendered digit (fast, used during rolling
+  //                                  when no cached BMP is available)
   //   ch '0'..'9', useFont=false -> BMP from the active clock face (used on settle)
-  //   ch '.'                     -> dedicated dot panel (black background + dot)
+  //   ch '.'                     -> dedicated dot panel (uses /ips/cache/dot.bmp
+  //                                  if present, else hand-drawn fallback)
   //   ch ' '                     -> blank panel (all black)
   void drawDivergenceDigit(uint8_t panel, char ch, bool useFont);
+
+  // Pre-build a half-resolution cache of up to 5 digit BMPs. Used to roll
+  // through the target digits during the divergence meter without re-loading
+  // BMPs from LittleFS each frame. Returns true on full success; on failure,
+  // the cache is empty and the caller should fall back to font rendering.
+  bool buildDivergenceDigitCache(const uint8_t digits[], uint8_t count);
+
+  // Push a cached digit (scaled up nearest-neighbour to panel size) onto a
+  // panel. Returns true if the digit was found in the cache.
+  bool pushCachedDivergenceDigit(uint8_t panel, uint8_t digit);
 
   void setImageJustification(image_justification_t value) { imageJustification = value; }
   void setBox(uint16_t w, uint16_t h) { boxWidth = w; boxHeight = h; }
@@ -158,6 +170,19 @@ private:
   // instead of pure black.
   uint8_t* divergenceBg = nullptr;
   void ensureDivergenceBackground();
+
+  // Half-resolution cached digit BMPs for the divergence meter rolling
+  // phase. Up to 5 entries, each ~16 KB (67 x 120 RGB565). Built fresh per
+  // activation in buildDivergenceDigitCache(), kept until rebuilt or freed.
+  static const int DIV_CACHE_W = 67;
+  static const int DIV_CACHE_H = 120;
+  struct DivDigitCache {
+    uint8_t digit;       // 0..9
+    uint16_t* buf;       // DIV_CACHE_W * DIV_CACHE_H pixels, RGB565
+  };
+  DivDigitCache divergenceCache[5];
+  uint8_t divergenceCacheCount = 0;
+  void clearDivergenceDigitCache();
 };
 
 extern TFTs *tfts;

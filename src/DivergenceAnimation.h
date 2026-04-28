@@ -31,18 +31,24 @@ private:
     bool dirty = true;
 
     // Single global tick counter — all panels advance together, but each
-    // panel starts at a random digit. Per panel:
-    //   shown = (startOffset[i] + globalTick) mod 10
-    // Each panel settles on its target after enough cycles to wrap around to
-    // it, so different panels finish at slightly different ticks.
+    // panel has a random offset into the 5-element target cycle. Per panel:
+    //   shown = targetDigit[(startOffset[i] + globalTick) mod 5]
+    // Panel d settles when (startOffset[d] + tick) mod 5 == d, after at
+    // least `cycles` full passes through the target sequence.
     uint8_t globalTick = 0;
     uint8_t maxDoneTick = 0;
     uint8_t targetDigit[5];            // 0..9
-    uint8_t startOffset[5];            // random initial digit shown
+    uint8_t startOffset[5];            // 0..4, position within the 5-cycle
     bool digitSettled[5];              // once true, that panel won't be repushed
     bool firstFrame = true;            // gate the one-time dot/blank panel paint
+    bool useCachedDigits = false;      // true iff TFTs has a working scaled-BMP
+                                       // cache for the target digits
 
     uint32_t dwellStartMs = 0;
+
+    // Builds the unique-digit list (no duplicates) and writes it into out[].
+    // Returns the count.
+    uint8_t collectUniqueTargets(uint8_t out[5]) const;
 };
 
 #endif
