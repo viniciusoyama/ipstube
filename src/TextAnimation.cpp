@@ -29,6 +29,16 @@ char TextAnimation::tapeAt(const String& tape, int32_t idx) const {
 
 void TextAnimation::invalidate() { dirty = true; }
 
+void TextAnimation::resetCycleCount() {
+    if (IPSClock::getTextCycleLimitEnabled() && IPSClock::getTextCycleLimit().value > 0) {
+        cyclesRemaining = IPSClock::getTextCycleLimit().value;
+    } else {
+        cyclesRemaining = -1;
+    }
+    finished = false;
+    prevLeftmostIdx = -1;
+}
+
 bool TextAnimation::loop() {
     String text = IPSClock::getTextContent();
     bool fixed = IPSClock::getTextFixed();
@@ -74,6 +84,22 @@ void TextAnimation::animate(TFTs& tfts) {
     String tape = text;
     if (!fixed) {
         for (uint8_t k = 0; k < padding; k++) tape += ' ';
+    }
+
+    // Cycle counting: only meaningful in slide mode with non-empty text and an
+    // active limit. A cycle completes when the last text character has just left
+    // the leftmost panel.
+    if (!fixed && text.length() > 0 && cyclesRemaining > 0 && tape.length() > 0) {
+        int32_t L = (int32_t)tape.length();
+        int32_t newLeftmostIdx = ((((int32_t)tick - (int32_t)(NUM_DIGITS - 1)) % L) + L) % L;
+        int32_t lastTextIdx = (int32_t)text.length() - 1;
+        if (prevLeftmostIdx == lastTextIdx && newLeftmostIdx != lastTextIdx) {
+            cyclesRemaining--;
+            if (cyclesRemaining == 0) {
+                finished = true;
+            }
+        }
+        prevLeftmostIdx = newLeftmostIdx;
     }
 
     StaticSprite& sprite = tfts.getSprite();
