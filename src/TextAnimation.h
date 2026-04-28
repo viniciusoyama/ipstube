@@ -23,7 +23,6 @@ public:
 
 private:
     static uint16_t parseHexColor(const String& s);
-    char tapeAt(const String& tape, int32_t idx) const;
 
     uint32_t lastDrawMs = 0;
     uint32_t tick = 0;

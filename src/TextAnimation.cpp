@@ -20,13 +20,6 @@ uint16_t TextAnimation::parseHexColor(const String& s) {
     return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
 }
 
-char TextAnimation::tapeAt(const String& tape, int32_t idx) const {
-    int32_t L = (int32_t)tape.length();
-    if (L == 0) return ' ';
-    int32_t m = ((idx % L) + L) % L;
-    return tape.charAt(m);
-}
-
 void TextAnimation::invalidate() {
     dirty = true;
     tick = 0;
@@ -73,43 +66,52 @@ void TextAnimation::animate(TFTs& tfts) {
     uint16_t fg565 = parseHexColor(IPSClock::getTextFgColor());
     uint16_t bg565 = parseHexColor(IPSClock::getTextBgColor());
 
-    String tape = text;
-    if (!fixed) {
-        for (uint8_t k = 0; k < padding; k++) tape += ' ';
+    int32_t textLen = (int32_t)text.length();
+
+    // Cycle phase model (slide mode):
+    //   tick = 0           -> initial activation frame, all panels blank
+    //   tick = 1           -> first text char enters rightmost panel
+    //   phase 0..scrollLen-1 -> text scrolling across (last char on leftmost at phase = scrollLen-1)
+    //   phase scrollLen..cyclePeriod-1 -> trailing all-blank padding
+    //
+    // panel charIdx (0=leftmost..5=rightmost) shows text[stripPos] when
+    //   stripPos = phase - (NUM_DIGITS - 1 - charIdx)  is in [0, textLen).
+    // Otherwise the panel is blank.
+    int32_t scrollLen = (textLen > 0) ? (textLen + (int32_t)NUM_DIGITS - 1) : 0;
+    int32_t cyclePeriod = scrollLen + (int32_t)padding;
+    int32_t phase = -1;
+    if (!fixed && textLen > 0 && cyclePeriod > 0 && tick > 0) {
+        phase = (int32_t)((tick - 1) % (uint32_t)cyclePeriod);
     }
 
-    // Cycle counting: only meaningful in slide mode with non-empty text and an
-    // active limit. A cycle completes when the last text character has just left
-    // the leftmost panel.
-    if (!fixed && text.length() > 0 && cyclesRemaining > 0 && tape.length() > 0) {
-        int32_t L = (int32_t)tape.length();
-        int32_t newLeftmostIdx = ((((int32_t)tick - (int32_t)(NUM_DIGITS - 1)) % L) + L) % L;
-        int32_t lastTextIdx = (int32_t)text.length() - 1;
-        if (prevLeftmostIdx == lastTextIdx && newLeftmostIdx != lastTextIdx) {
+    // Cycle counting (slide mode only). Compares positions, not characters,
+    // so repeated characters in the text don't trigger false counts.
+    int32_t currLeftmostStripPos = (phase >= 0) ? (phase - (int32_t)(NUM_DIGITS - 1)) : -1;
+    if (!fixed && textLen > 0 && cyclesRemaining > 0) {
+        // A cycle completes when the leftmost panel transitions from
+        // showing the last text character (stripPos == textLen-1) to
+        // showing anything else.
+        if (prevLeftmostIdx == textLen - 1 && currLeftmostStripPos != textLen - 1) {
             cyclesRemaining--;
             if (cyclesRemaining == 0) {
                 finished = true;
             }
         }
-        prevLeftmostIdx = newLeftmostIdx;
     }
+    prevLeftmostIdx = currLeftmostStripPos;
 
     StaticSprite& sprite = tfts.getSprite();
     int16_t cx = sprite.width() / 2;
     int16_t cy = sprite.height() / 2;
 
     for (uint8_t charIdx = 0; charIdx < NUM_DIGITS; charIdx++) {
-        char ch;
+        char ch = ' ';
         if (fixed) {
-            ch = (charIdx < text.length()) ? text.charAt(charIdx) : ' ';
-        } else {
-            if (tape.length() == 0) {
-                ch = ' ';
-            } else {
-                // Right-to-left marquee: letters enter from the rightmost panel
-                // and travel left, so the text reads in natural order across panels.
-                int32_t fromRight = (int32_t)(NUM_DIGITS - 1 - charIdx);
-                ch = tapeAt(tape, (int32_t)tick - fromRight);
+            if (charIdx < (uint8_t)textLen) ch = text.charAt(charIdx);
+        } else if (textLen > 0 && phase >= 0) {
+            int32_t stripPos = phase - (int32_t)(NUM_DIGITS - 1 - charIdx);
+            if (stripPos >= 0 && stripPos < textLen) {
+                ch = text.charAt(stripPos);
             }
         }
 
