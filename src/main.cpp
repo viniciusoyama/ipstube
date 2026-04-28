@@ -229,6 +229,17 @@ IRAMPtrArray<BaseConfigItem*> matrixSet {
 };
 CompositeConfigItem matrixConfig("matrix", 0, matrixSet);
 
+IRAMPtrArray<BaseConfigItem*> textSet {
+    &IPSClock::getTextContent(),
+    &IPSClock::getTextFixed(),
+    &IPSClock::getTextInterval(),
+    &IPSClock::getTextPadding(),
+    &IPSClock::getTextFgColor(),
+    &IPSClock::getTextBgColor(),
+    0
+};
+CompositeConfigItem textConfig("text", 0, textSet);
+
 IRAMPtrArray<BaseConfigItem*> mqttSet {
     // MQTT service
 	&MQTTBroker::getHost(),
@@ -256,6 +267,7 @@ IRAMPtrArray<BaseConfigItem*> configSetRoot {
 	&facesConfig,
 	&weatherConfig,
 	&matrixConfig,
+	&textConfig,
 	&mqttConfig,
 	0
 };
