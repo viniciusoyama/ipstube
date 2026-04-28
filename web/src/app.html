@@ -381,6 +381,10 @@
 			var fixed = $('#text_fixed').prop('checked');
 			var $c = $('#text_slide_container');
 			if (fixed) $c.hide(); else $c.show();
+
+			var limitOn = $('#text_cycle_limit_enabled').prop('checked');
+			var $lc = $('#text_cycle_limit_container');
+			if (limitOn) $lc.show(); else $lc.hide();
 		}
 
 		function colorChange(element) {
