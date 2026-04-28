@@ -8,6 +8,7 @@ const char* WSMenuHandler::infoMenu = "{\"5\": { \"url\" : \"info.html\", \"titl
 const char* WSMenuHandler::networkMenu = "{\"6\": { \"url\" : \"network.html\", \"title\" : \"Network\" }}";
 const char* WSMenuHandler::weatherMenu = "{\"7\": { \"url\" : \"weather.html\", \"title\" : \"Weather\" }}";
 const char* WSMenuHandler::matrixMenu = "{\"8\": { \"url\" : \"matrix.html\", \"title\" : \"Screen Saver\" }}";
+const char* WSMenuHandler::textMenu = "{\"9\": { \"url\" : \"text.html\", \"title\" : \"Text\" }}";
 
 void WSMenuHandler::handle(AsyncWebSocketClient *client, char *data) {
 	String json("{\"type\":\"sv.init.menu\", \"value\":[");
