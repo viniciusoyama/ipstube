@@ -8,6 +8,7 @@
 #include "ChipSelect.h"
 #include "DigitalRainAnimation.h"
 #include "TextAnimation.h"
+#include "DivergenceAnimation.h"
 
 #define TFT_PWM_CHANNEL 0
 #define TFT_PWM_FREQ 20000   // PWM frequency for TFT dimming (Hz)
@@ -76,6 +77,11 @@ public:
   void resetTextCycleCount();
   bool isTextAnimationFinished();
 
+  void animateDivergence();
+  void restartDivergenceAnimation();
+  bool isDivergenceAnimationFinished();
+  void drawDivergenceDigit(uint8_t panel, char digitChar, bool drawDot);
+
   void setImageJustification(image_justification_t value) { imageJustification = value; }
   void setBox(uint16_t w, uint16_t h) { boxWidth = w; boxHeight = h; }
   // Controls the power to all displays
@@ -108,6 +114,7 @@ private:
   DigitalRainAnimation& getMatrixAnimator();
 #endif
   TextAnimation& getTextAnimator();
+  DivergenceAnimation& getDivergenceAnimator();
   void drawStatus();
 
   byte showDigits = 0;

@@ -355,6 +355,77 @@ void TFTs::animateText() {
   release();
 }
 
+DivergenceAnimation& TFTs::getDivergenceAnimator() {
+  static DivergenceAnimation animator;
+  return animator;
+}
+
+void TFTs::restartDivergenceAnimation() {
+  getDivergenceAnimator().restart();
+}
+
+bool TFTs::isDivergenceAnimationFinished() {
+  return getDivergenceAnimator().isFinished();
+}
+
+void TFTs::animateDivergence() {
+  DivergenceAnimation& animator = getDivergenceAnimator();
+  if (!animator.loop()) {
+    return;
+  }
+
+  claim();
+  uint8_t saved = chip_select.getDigitMap();
+
+  animator.animate(*this);
+
+  chip_select.setDigitMap(saved, true);
+  release();
+}
+
+// Parse "#rrggbb" -> RGB565. Falls back to white on malformed input.
+static uint16_t parseHexColor565(const String& s) {
+  if (s.length() != 7 || s.charAt(0) != '#') return 0xFFFF;
+  long v = strtol(s.c_str() + 1, nullptr, 16);
+  uint8_t r = (v >> 16) & 0xFF;
+  uint8_t g = (v >> 8) & 0xFF;
+  uint8_t b = v & 0xFF;
+  return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
+}
+
+void TFTs::drawDivergenceDigit(uint8_t panel, char digitChar, bool drawDot) {
+  if (!enabled) return;
+
+  if (digitChar == ' ') {
+    chip_select.setDigit(panel);
+    TFT_eSprite& sprite = getSprite();
+    sprite.fillSprite(TFT_BLACK);
+    sprite.pushSprite(0, 0);
+    return;
+  }
+
+  // Cache the digit name without auto-pushing, then load + draw via
+  // drawImage() so we can overlay the dot before pushing.
+  char name[2] = { digitChar, 0 };
+  setDigit(panel, name, no);
+
+  // Force-reload the BMP from disk: drawImage() short-circuits if the
+  // requested file is already in the buffer, but a previous frame may have
+  // left a dot painted into that buffer.
+  FileInBuffer = 255;
+  TFT_eSprite& sprite = drawImage(panel);
+
+  if (drawDot) {
+    uint16_t dotColor = parseHexColor565(IPSClock::getDivergenceDotColor());
+    int16_t r = max((int16_t)6, (int16_t)(sprite.height() / 30));
+    int16_t x = sprite.width() - r - 4;
+    int16_t y = sprite.height() - r - 4;
+    sprite.fillCircle(x, y, r, dotColor);
+  }
+
+  sprite.pushSprite(0, 0);
+}
+
 void TFTs::animateRain() {
 #ifdef SMOOTH_FONT
   DigitalRainAnim animator = getMatrixAnimator();
