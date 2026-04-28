@@ -161,6 +161,40 @@ text/cycle/divergence getters.
 
 ## Gotchas
 
+### 24-bit BMPs work correctly here (note the 3-line fix in TFTs.cpp)
+The original upstream `LoadImageBytesIntoSprite()` had a bug: the
+24-bit / 32-bit BMP branch read `r/g/b` as raw 8-bit values but the
+downstream packing line `(r << 11) | (g << 5) | b` assumes RGB565
+component widths (5/6/5 bits), causing `uint16_t` overflow and
+chaotic colour truncation. We fixed it in this branch by adding
+three right-shifts in `TFTs.cpp` around line 1064:
+
+```cpp
+case 24:
+  b = *inputPtr++ >> 3;   // 8-bit -> 5-bit
+  g = *inputPtr++ >> 2;   // 8-bit -> 6-bit
+  r = *inputPtr++ >> 3;   // 8-bit -> 5-bit
+  break;
+```
+
+So the `dot.bmp` (and any other clock-face asset) can be 8-bit
+indexed *or* 24-bit BMP. If you regress this fix, 24-bit assets
+will look garbled.
+
+### RLE-compressed BMPs are not supported
+Only uncompressed BMPs are handled. The loader recognises
+compression types `0` (none), `3` (BI_BITFIELDS, for 16-bit), and
+`6` (BI_ALPHABITFIELDS). For any other compression value (notably
+`1` = BI_RLE8 which ImageMagick produces by default for paletted
+BMPs), the loader falls through and reads RLE control bytes as
+pixel data, producing garbled output.
+
+When converting BMPs with ImageMagick, always pass `-compress None`:
+
+```bash
+magick in.bmp -dither None -colors 256 -compress None BMP3:out.bmp
+```
+
 ### `LoadImageIntoBuffer` always returns `false`
 There's a bug in the upstream codebase (`src/TFTs.cpp` around line
 1197): the function is declared `bool` and ends with `return false;`

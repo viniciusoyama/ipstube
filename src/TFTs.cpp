@@ -1062,9 +1062,15 @@ bool TFTs::LoadImageBytesIntoSprite(int16_t w, int16_t h, uint8_t bitDepth, int1
           case 32:
             inputPtr++;
           case 24:
-            b = *inputPtr++;
-            g = *inputPtr++;
-            r = *inputPtr++;
+            // The pixel-packing code further down expects r/g/b in
+            // RGB565 component widths (5/6/5 bits). 24-bit BMPs store
+            // 8-bit channels, so pre-shift them down — without this the
+            // packing `(r << 11) | (g << 5) | b` overflows uint16_t and
+            // truncates chaotically, producing garbled colour. Same for
+            // 32-bit which falls through (alpha byte already skipped).
+            b = *inputPtr++ >> 3;
+            g = *inputPtr++ >> 2;
+            r = *inputPtr++ >> 3;
             break;
           case 16:
             {
