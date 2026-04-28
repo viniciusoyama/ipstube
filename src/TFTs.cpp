@@ -383,16 +383,10 @@ void TFTs::animateDivergence() {
   release();
 }
 
-// Parse "#rrggbb" -> RGB565. Falls back to white on malformed input.
-static uint16_t parseDivergenceColor() {
-  const String& s = IPSClock::getDivergenceColor();
-  if (s.length() != 7 || s.charAt(0) != '#') return 0xFFFF;
-  long v = strtol(s.c_str() + 1, nullptr, 16);
-  uint8_t r = (v >> 16) & 0xFF;
-  uint8_t g = (v >> 8) & 0xFF;
-  uint8_t b = v & 0xFF;
-  return ((r & 0xF8) << 8) | ((g & 0xFC) << 3) | (b >> 3);
-}
+// Hardcoded divergence accent color: RGB(255, 115, 0) -> RGB565.
+// Used only by fallback paths (no clock-face dot.bmp, font rolling).
+static const uint16_t DIVERGENCE_ACCENT =
+  ((255 & 0xF8) << 8) | ((115 & 0xFC) << 3) | (0 >> 3);
 
 void TFTs::ensureDivergenceBackground() {
   if (divergenceBg != nullptr) return;
@@ -405,7 +399,10 @@ void TFTs::ensureDivergenceBackground() {
   loadedFilename[0] = 0;  // force a real disk read
   char filename[64];
   strcpy(filename, "/ips/cache/space.bmp");
-  if (LoadImageIntoBuffer(filename)) {
+  // LoadImageIntoBuffer() unconditionally returns false (upstream bug);
+  // detect success by checking whether it set loadedFilename.
+  LoadImageIntoBuffer(filename);
+  if (loadedFilename[0] != 0) {
     memcpy(divergenceBg, StaticSprite::output_buffer, bytes);
   } else {
     memset(divergenceBg, 0, bytes);
@@ -436,7 +433,10 @@ bool TFTs::buildDivergenceDigitCache(const uint8_t digits[], uint8_t count) {
     char filename[24];
     snprintf(filename, sizeof(filename), "/ips/cache/%u.bmp", (unsigned)digits[i]);
     loadedFilename[0] = 0;
-    if (!LoadImageIntoBuffer(filename)) {
+    // LoadImageIntoBuffer() unconditionally returns false; detect real
+    // success by whether it populated loadedFilename.
+    LoadImageIntoBuffer(filename);
+    if (loadedFilename[0] == 0) {
       free(buf);
       clearDivergenceDigitCache();
       return false;
@@ -513,7 +513,8 @@ void TFTs::drawDivergenceDigit(uint8_t panel, char ch, bool useFont) {
   if (ch == '.') {
     chip_select.setDigit(panel);
     loadedFilename[0] = 0;
-    if (LoadImageIntoBuffer((char*)"/ips/cache/dot.bmp")) {
+    LoadImageIntoBuffer((char*)"/ips/cache/dot.bmp");
+    if (loadedFilename[0] != 0) {
       getSprite().pushSprite(0, 0);
       return;
     }
@@ -536,7 +537,7 @@ void TFTs::drawDivergenceDigit(uint8_t panel, char ch, bool useFont) {
   if (ch >= '0' && ch <= '9') {
     // Font-rendered rolling digit. Single-arg setTextColor so the glyph
     // paints transparently over the bg (no black rectangle around the digit).
-    const uint16_t fg = parseDivergenceColor();
+    const uint16_t fg = DIVERGENCE_ACCENT;
     sprite.setTextDatum(MC_DATUM);
     sprite.setTextColor(fg);
     sprite.setTextFont(6);
@@ -547,7 +548,7 @@ void TFTs::drawDivergenceDigit(uint8_t panel, char ch, bool useFont) {
     sprite.setTextDatum(TL_DATUM);
   } else if (ch == '.') {
     // dot.bmp wasn't available: hand-drawn fallback in the configured color.
-    const uint16_t dotColor = parseDivergenceColor();
+    const uint16_t dotColor = DIVERGENCE_ACCENT;
     int16_t r = sprite.width() / 12;
     int16_t margin = r + 8;
     int16_t x = sprite.width() - margin;
